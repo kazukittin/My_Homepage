@@ -509,12 +509,20 @@ function setupGoogleCalendar() {
 
   elements.prevMonth.addEventListener("click", () => {
     calendarVisibleMonth = new Date(calendarVisibleMonth.getFullYear(), calendarVisibleMonth.getMonth() - 1, 1);
-    renderMonthCalendar(calendarEvents);
+    if (calendarSignedIn) {
+      listCalendarEvents();
+    } else {
+      renderMonthCalendar(calendarEvents);
+    }
   });
 
   elements.nextMonth.addEventListener("click", () => {
     calendarVisibleMonth = new Date(calendarVisibleMonth.getFullYear(), calendarVisibleMonth.getMonth() + 1, 1);
-    renderMonthCalendar(calendarEvents);
+    if (calendarSignedIn) {
+      listCalendarEvents();
+    } else {
+      renderMonthCalendar(calendarEvents);
+    }
   });
 
   elements.monthGrid.addEventListener("click", (event) => {
@@ -669,18 +677,19 @@ async function listCalendarEvents() {
     return;
   }
 
+  const fetchRange = getCalendarFetchRange();
   const response = await gapi.client.calendar.events.list({
     calendarId: "primary",
-    timeMin: getWeekStart(new Date()).toISOString(),
-    timeMax: getWeekEnd(new Date()).toISOString(),
+    timeMin: fetchRange.start.toISOString(),
+    timeMax: fetchRange.end.toISOString(),
     showDeleted: false,
     singleEvents: true,
-    maxResults: 20,
+    maxResults: 100,
     orderBy: "startTime",
   });
 
   calendarEvents = response.result.items || [];
-  renderCalendarEvents(calendarEvents);
+  renderCalendarEvents(getCurrentWeekEvents(calendarEvents));
   renderMonthCalendar(calendarEvents);
 }
 
@@ -808,7 +817,7 @@ function renderMonthCalendar(events) {
     date.setDate(startDate.getDate() + index);
     const isCurrentMonth = date.getMonth() === month;
     const isToday = date.toDateString() === new Date().toDateString();
-    const allDayEvents = events.filter((event) => isSameCalendarDate(getEventStartDate(event), date));
+    const allDayEvents = events.filter((event) => eventOccursOnDate(event, date));
     const dayEvents = allDayEvents.slice(0, 3);
     const dayType = getDominantCalendarEventType(allDayEvents);
 
@@ -902,13 +911,54 @@ function getEventStartDate(event) {
   return new Date(event.start?.dateTime || event.start?.date || "");
 }
 
-function isSameCalendarDate(left, right) {
-  return (
-    !Number.isNaN(left.getTime()) &&
-    left.getFullYear() === right.getFullYear() &&
-    left.getMonth() === right.getMonth() &&
-    left.getDate() === right.getDate()
-  );
+function getEventEndDate(event) {
+  return new Date(event.end?.dateTime || event.end?.date || event.start?.dateTime || event.start?.date || "");
+}
+
+function eventOccursOnDate(event, date) {
+  if (event.start?.date) {
+    const targetDate = toDateInputValue(date);
+    const startDate = event.start.date;
+    const endDate = event.end?.date || getNextDateInputValue(startDate);
+    return targetDate >= startDate && targetDate < endDate;
+  }
+
+  const start = getEventStartDate(event);
+  const end = getEventEndDate(event);
+  if (Number.isNaN(start.getTime())) {
+    return false;
+  }
+
+  const dayStart = new Date(date);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+  const eventEnd = Number.isNaN(end.getTime()) ? new Date(start.getTime() + 1) : end;
+
+  return start < dayEnd && eventEnd > dayStart;
+}
+
+function eventOccursInRange(event, start, end) {
+  if (event.start?.date) {
+    const eventStart = parseDateInputAsLocal(event.start.date);
+    const eventEnd = parseDateInputAsLocal(event.end?.date || getNextDateInputValue(event.start.date));
+    return eventStart < end && eventEnd > start;
+  }
+
+  const eventStart = getEventStartDate(event);
+  const eventEnd = getEventEndDate(event);
+  if (Number.isNaN(eventStart.getTime())) {
+    return false;
+  }
+
+  const safeEventEnd = Number.isNaN(eventEnd.getTime()) ? new Date(eventStart.getTime() + 1) : eventEnd;
+  return eventStart < end && safeEventEnd > start;
+}
+
+function getCurrentWeekEvents(events) {
+  const start = getWeekStart(new Date());
+  const end = getWeekEnd(new Date());
+  return events.filter((event) => eventOccursInRange(event, start, end));
 }
 
 function fillEventForm(event) {
@@ -1019,9 +1069,41 @@ function getWeekEnd(date) {
   return end;
 }
 
+function getMonthCalendarRange(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const start = new Date(year, month, 1 - firstDay.getDay());
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 42);
+  return { start, end };
+}
+
+function getCalendarFetchRange() {
+  const monthRange = getMonthCalendarRange(calendarVisibleMonth);
+  const weekStart = getWeekStart(new Date());
+  const weekEnd = getWeekEnd(new Date());
+  return {
+    start: monthRange.start < weekStart ? monthRange.start : weekStart,
+    end: monthRange.end > weekEnd ? monthRange.end : weekEnd,
+  };
+}
+
 function toDateInputValue(date) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
+}
+
+function parseDateInputAsLocal(value) {
+  return new Date(`${value}T00:00:00`);
+}
+
+function getNextDateInputValue(value) {
+  const date = parseDateInputAsLocal(value);
+  date.setDate(date.getDate() + 1);
+  return toDateInputValue(date);
 }
 
 async function loadWeather() {
