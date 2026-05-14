@@ -141,8 +141,7 @@ const elements = {
   calendarConfigEditToggle: document.querySelector("#calendarConfigEditToggle"),
   saveCalendarConfig: document.querySelector("#saveCalendarConfig"),
   clearCalendarConfig: document.querySelector("#clearCalendarConfig"),
-  authorizeCalendar: document.querySelector("#authorizeCalendar"),
-  signoutCalendar: document.querySelector("#signoutCalendar"),
+  calendarAuthToggle: document.querySelector("#calendarAuthToggle"),
   calendarStatus: document.querySelector("#calendarStatus"),
   calendarOrigin: document.querySelector("#calendarOrigin"),
   eventForm: document.querySelector("#eventForm"),
@@ -448,12 +447,12 @@ function setupGoogleCalendar() {
     renderCalendarEvents([]);
   });
 
-  elements.authorizeCalendar.addEventListener("click", () => {
-    authorizeGoogleCalendar();
-  });
-
-  elements.signoutCalendar.addEventListener("click", () => {
-    signoutGoogleCalendar();
+  elements.calendarAuthToggle.addEventListener("click", () => {
+    if (calendarSignedIn) {
+      signoutGoogleCalendar();
+    } else {
+      authorizeGoogleCalendar();
+    }
   });
 
   elements.eventForm.addEventListener("submit", (event) => {
@@ -557,6 +556,7 @@ function setupTokenClient() {
         return;
       }
       calendarSignedIn = true;
+      updateCalendarAuthButton();
       updateCalendarStatus("ログイン済み。予定を編集できます。");
       await listCalendarEvents();
     },
@@ -585,8 +585,14 @@ function signoutGoogleCalendar() {
     gapi.client.setToken("");
   }
   calendarSignedIn = false;
+  updateCalendarAuthButton();
   updateCalendarStatus("ログアウトしました。");
   renderCalendarEvents([]);
+}
+
+function updateCalendarAuthButton() {
+  elements.calendarAuthToggle.textContent = calendarSignedIn ? "ログアウト" : "ログイン";
+  elements.calendarAuthToggle.setAttribute("aria-pressed", String(calendarSignedIn));
 }
 
 async function listCalendarEvents() {
