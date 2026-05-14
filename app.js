@@ -377,11 +377,12 @@ function setupShortcuts() {
   elements.categoryManager.addEventListener("click", (event) => {
     const renameButton = event.target.closest("[data-rename-category]");
     const deleteButton = event.target.closest("[data-delete-category]");
-    if (!renameButton && !deleteButton) {
+    const moveButton = event.target.closest("[data-move-category]");
+    if (!renameButton && !deleteButton && !moveButton) {
       return;
     }
 
-    const groupIndex = Number((renameButton || deleteButton).dataset.groupIndex);
+    const groupIndex = Number((renameButton || deleteButton || moveButton).dataset.groupIndex);
     if (!Number.isInteger(groupIndex) || !shortcutGroups[groupIndex]) {
       return;
     }
@@ -392,6 +393,10 @@ function setupShortcuts() {
 
     if (deleteButton) {
       deleteShortcutCategory(groupIndex);
+    }
+
+    if (moveButton) {
+      moveShortcutCategory(groupIndex, Number(moveButton.dataset.direction));
     }
   });
 
@@ -423,7 +428,7 @@ function renderCategoryOptions() {
     .join("");
 }
 
-function renderCategoryManager() {
+function renderLegacyCategoryManager() {
   elements.categoryManager.innerHTML = shortcutGroups
     .map(
       (group, groupIndex) => `
@@ -435,6 +440,38 @@ function renderCategoryManager() {
       `
     )
     .join("");
+}
+
+function renderCategoryManager() {
+  elements.categoryManager.innerHTML = shortcutGroups
+    .map(
+      (group, groupIndex) => `
+        <div class="category-manager-row">
+          <input type="text" value="${escapeAttribute(group.category)}" data-category-name="${groupIndex}" aria-label="${escapeAttribute(group.category)}のカテゴリ名">
+          <button type="button" data-move-category data-group-index="${groupIndex}" data-direction="-1" ${groupIndex === 0 ? "disabled" : ""}>上へ</button>
+          <button type="button" data-move-category data-group-index="${groupIndex}" data-direction="1" ${groupIndex === shortcutGroups.length - 1 ? "disabled" : ""}>下へ</button>
+          <button type="button" data-rename-category data-group-index="${groupIndex}">変更</button>
+          <button type="button" data-delete-category data-group-index="${groupIndex}">削除</button>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function moveShortcutCategory(groupIndex, direction) {
+  const nextIndex = groupIndex + direction;
+  if (nextIndex < 0 || nextIndex >= shortcutGroups.length) {
+    return;
+  }
+
+  const selectedCategory = shortcutGroups[groupIndex].category;
+  const [group] = shortcutGroups.splice(groupIndex, 1);
+  shortcutGroups.splice(nextIndex, 0, group);
+  saveShortcutGroups();
+  renderCategoryOptions();
+  renderCategoryManager();
+  renderLinks();
+  elements.shortcutCategory.value = selectedCategory;
 }
 
 function renameShortcutCategory(groupIndex) {
@@ -486,8 +523,11 @@ function renderLinks() {
               (item, itemIndex) => `
                 <li class="shortcut-item">
                   <a class="shortcut-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener">
-                    ${escapeHtml(item.label)}
-                    <span class="shortcut-url">${formatUrl(item.url)}</span>
+                    <span class="shortcut-text">
+                      <span>${escapeHtml(item.label)}</span>
+                      <span class="shortcut-url">${formatUrl(item.url)}</span>
+                    </span>
+                    <img class="shortcut-icon" src="${escapeAttribute(getShortcutIconUrl(item.url))}" alt="" loading="lazy">
                   </a>
                   <button class="shortcut-delete" type="button" data-delete-shortcut data-group-index="${groupIndex}" data-item-index="${itemIndex}" aria-label="${escapeAttribute(item.label)}を削除">削除</button>
                 </li>
@@ -1568,6 +1608,15 @@ function formatUrl(url) {
     return new URL(url).hostname.replace(/^www\./, "");
   } catch {
     return url;
+  }
+}
+
+function getShortcutIconUrl(url) {
+  try {
+    const domain = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
+  } catch {
+    return "";
   }
 }
 
