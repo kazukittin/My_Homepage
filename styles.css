@@ -1066,6 +1066,11 @@ a {
   gap: 12px;
 }
 
+.side-heading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
 .month-calendar {
   display: grid;
   gap: 8px;
@@ -1148,6 +1153,20 @@ a {
   color: #111412;
   background: var(--accent);
   font-size: 11px;
+}
+
+.event-modal {
+  width: min(520px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.event-modal::backdrop {
+  background: rgba(0, 0, 0, 0.58);
 }
 
 .event-form {

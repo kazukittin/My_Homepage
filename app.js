@@ -95,6 +95,7 @@ const newsCategoryKey = "private-start.newsCategory";
 const newsCachePrefix = "private-start.newsCache.";
 const newsCacheMaxAge = 15 * 60 * 1000;
 const miniMemoKey = "private-start.miniMemo";
+const calendarTokenKey = "private-start.calendarToken";
 
 let shortcutGroups = loadShortcutGroups();
 let tokenClient;
@@ -145,6 +146,9 @@ const elements = {
   calendarStatus: document.querySelector("#calendarStatus"),
   calendarOrigin: document.querySelector("#calendarOrigin"),
   eventForm: document.querySelector("#eventForm"),
+  eventModal: document.querySelector("#eventModal"),
+  closeEventModal: document.querySelector("#closeEventModal"),
+  eventModalTitle: document.querySelector("#eventModalTitle"),
   eventId: document.querySelector("#eventId"),
   eventTitle: document.querySelector("#eventTitle"),
   eventStart: document.querySelector("#eventStart"),
@@ -455,6 +459,17 @@ function setupGoogleCalendar() {
 
   elements.cancelEventEdit.addEventListener("click", () => {
     resetEventForm();
+    elements.eventModal.close();
+  });
+
+  elements.closeEventModal.addEventListener("click", () => {
+    elements.eventModal.close();
+  });
+
+  elements.eventModal.addEventListener("click", (event) => {
+    if (event.target === elements.eventModal) {
+      elements.eventModal.close();
+    }
   });
 
   elements.calendarEventList.addEventListener("click", (event) => {
@@ -476,6 +491,14 @@ function setupGoogleCalendar() {
   elements.nextMonth.addEventListener("click", () => {
     calendarVisibleMonth = new Date(calendarVisibleMonth.getFullYear(), calendarVisibleMonth.getMonth() + 1, 1);
     renderMonthCalendar(calendarEvents);
+  });
+
+  elements.monthGrid.addEventListener("click", (event) => {
+    const day = event.target.closest("[data-calendar-date]");
+    if (!day) {
+      return;
+    }
+    openEventModalForDate(day.dataset.calendarDate);
   });
 
   initializeGoogleCalendar();
@@ -533,7 +556,10 @@ function initializeGoogleCalendar() {
       });
       gapiReady = true;
       setupTokenClient();
-      updateCalendarStatus("ログインすると予定を編集できます。");
+      await restoreCalendarToken();
+      if (!calendarSignedIn) {
+        updateCalendarStatus("ログインすると予定を編集できます。");
+      }
     });
   });
 
@@ -558,6 +584,7 @@ function setupTokenClient() {
         return;
       }
       calendarSignedIn = true;
+      saveCalendarToken(response);
       updateCalendarAuthButton();
       updateCalendarStatus("ログイン済み。予定を編集できます。");
       await listCalendarEvents();
@@ -586,6 +613,7 @@ function signoutGoogleCalendar() {
     google.accounts.oauth2.revoke(token.access_token);
     gapi.client.setToken("");
   }
+  localStorage.removeItem(calendarTokenKey);
   calendarSignedIn = false;
   updateCalendarAuthButton();
   updateCalendarStatus("ログアウトしました。");
@@ -606,7 +634,8 @@ async function listCalendarEvents() {
 
   const response = await gapi.client.calendar.events.list({
     calendarId: "primary",
-    timeMin: new Date().toISOString(),
+    timeMin: getWeekStart(new Date()).toISOString(),
+    timeMax: getWeekEnd(new Date()).toISOString(),
     showDeleted: false,
     singleEvents: true,
     maxResults: 20,
@@ -730,7 +759,7 @@ function renderMonthCalendar(events) {
     const dayEvents = events.filter((event) => isSameCalendarDate(getEventStartDate(event), date)).slice(0, 3);
 
     return `
-      <button class="month-day${isCurrentMonth ? "" : " is-muted"}${isToday ? " is-today" : ""}" type="button">
+      <button class="month-day${isCurrentMonth ? "" : " is-muted"}${isToday ? " is-today" : ""}" type="button" data-calendar-date="${toDateInputValue(date)}">
         <span class="month-day-number">${date.getDate()}</span>
         <span class="month-day-events">
           ${dayEvents.map((event) => `<span>${escapeHtml(event.summary || "無題")}</span>`).join("")}
@@ -738,6 +767,17 @@ function renderMonthCalendar(events) {
       </button>
     `;
   }).join("");
+}
+
+function openEventModalForDate(dateText) {
+  resetEventForm();
+  const start = new Date(`${dateText}T09:00:00`);
+  const end = new Date(`${dateText}T10:00:00`);
+  elements.eventStart.value = toDateTimeLocal(start.toISOString());
+  elements.eventEnd.value = toDateTimeLocal(end.toISOString());
+  elements.eventModalTitle.textContent = "予定を追加";
+  elements.eventModal.showModal();
+  elements.eventTitle.focus();
 }
 
 function getEventStartDate(event) {
@@ -759,12 +799,15 @@ function fillEventForm(event) {
   elements.eventDescription.value = event.description;
   elements.eventStart.value = toDateTimeLocal(event.start);
   elements.eventEnd.value = toDateTimeLocal(event.end);
+  elements.eventModalTitle.textContent = "予定を編集";
+  elements.eventModal.showModal();
   updateCalendarStatus("予定を編集中です。");
 }
 
 function resetEventForm() {
   elements.eventForm.reset();
   elements.eventId.value = "";
+  elements.eventModalTitle.textContent = "予定を追加";
 }
 
 function updateCalendarStatus(message) {
@@ -808,6 +851,56 @@ function loadScript(src, onload) {
   script.defer = true;
   script.onload = onload;
   document.head.appendChild(script);
+}
+
+function saveCalendarToken(response) {
+  if (!response.access_token) {
+    return;
+  }
+
+  localStorage.setItem(
+    calendarTokenKey,
+    JSON.stringify({
+      access_token: response.access_token,
+      expires_at: Date.now() + Number(response.expires_in || 0) * 1000,
+    })
+  );
+}
+
+async function restoreCalendarToken() {
+  try {
+    const token = JSON.parse(localStorage.getItem(calendarTokenKey));
+    if (!token?.access_token || Date.now() > token.expires_at - 60000) {
+      localStorage.removeItem(calendarTokenKey);
+      return;
+    }
+
+    gapi.client.setToken({ access_token: token.access_token });
+    calendarSignedIn = true;
+    updateCalendarAuthButton();
+    updateCalendarStatus("ログイン状態を復元しました。");
+    await listCalendarEvents();
+  } catch {
+    localStorage.removeItem(calendarTokenKey);
+  }
+}
+
+function getWeekStart(date) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - start.getDay());
+  return start;
+}
+
+function getWeekEnd(date) {
+  const end = getWeekStart(date);
+  end.setDate(end.getDate() + 7);
+  return end;
+}
+
+function toDateInputValue(date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
 }
 
 async function loadWeather() {

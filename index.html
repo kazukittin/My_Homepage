@@ -153,20 +153,13 @@
                 <div class="month-grid" id="monthGrid"></div>
               </section>
               <div class="calendar-side-panel">
-              <form class="event-form" id="eventForm">
-                <input id="eventId" type="hidden">
-                <input id="eventTitle" type="text" autocomplete="off" placeholder="予定名">
-                <input id="eventStart" type="datetime-local">
-                <input id="eventEnd" type="datetime-local">
-                <textarea id="eventDescription" placeholder="メモ"></textarea>
-                <div class="event-actions">
-                  <button id="saveEvent" type="submit">予定を保存</button>
-                  <button id="cancelEventEdit" type="button">編集解除</button>
+                <div class="side-heading">
+                  <p class="eyebrow">予定</p>
+                  <h2>今週の予定</h2>
                 </div>
-              </form>
-              <div class="calendar-event-list" id="calendarEventList">
-                <p class="feed-message">Googleカレンダーにログインすると予定を表示します。</p>
-              </div>
+                <div class="calendar-event-list" id="calendarEventList">
+                  <p class="feed-message">Googleカレンダーにログインすると予定を表示します。</p>
+                </div>
               </div>
           </div>
         </section>
@@ -222,6 +215,26 @@
             </form>
           </section>
         </div>
+      </div>
+    </dialog>
+
+    <dialog class="event-modal" id="eventModal" aria-labelledby="eventModalTitle">
+      <div class="modal-shell">
+        <div class="modal-heading">
+          <h2 id="eventModalTitle">予定を追加</h2>
+          <button class="modal-close" id="closeEventModal" type="button" aria-label="閉じる">×</button>
+        </div>
+        <form class="event-form" id="eventForm">
+          <input id="eventId" type="hidden">
+          <input id="eventTitle" type="text" autocomplete="off" placeholder="予定名">
+          <input id="eventStart" type="datetime-local">
+          <input id="eventEnd" type="datetime-local">
+          <textarea id="eventDescription" placeholder="メモ"></textarea>
+          <div class="event-actions">
+            <button id="saveEvent" type="submit">予定を保存</button>
+            <button id="cancelEventEdit" type="button">編集解除</button>
+          </div>
+        </form>
       </div>
     </dialog>
 
