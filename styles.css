@@ -1056,9 +1056,98 @@ a {
 
 .api-calendar-card {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: minmax(420px, 1fr) 320px;
   gap: 12px;
   align-items: start;
+}
+
+.calendar-side-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.month-calendar {
+  display: grid;
+  gap: 8px;
+}
+
+.month-calendar-header {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 8px;
+}
+
+.month-calendar-header strong {
+  text-align: center;
+}
+
+.month-calendar-header button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.month-weekdays,
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.month-weekdays {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  text-align: center;
+}
+
+.month-day {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 92px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.025);
+  text-align: left;
+}
+
+.month-day.is-muted {
+  color: var(--faint);
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.month-day.is-today {
+  border-color: rgba(142, 197, 163, 0.72);
+  background: rgba(142, 197, 163, 0.08);
+}
+
+.month-day-number {
+  font-weight: 800;
+}
+
+.month-day-events {
+  display: grid;
+  gap: 3px;
+}
+
+.month-day-events span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 5px;
+  border-radius: 6px;
+  color: #111412;
+  background: var(--accent);
+  font-size: 11px;
 }
 
 .event-form {

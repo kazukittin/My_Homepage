@@ -135,6 +135,24 @@
             <a class="section-action" href="https://calendar.google.com/" target="_blank" rel="noopener">Googleカレンダーを開く</a>
           </div>
           <div class="calendar-card api-calendar-card">
+              <section class="month-calendar" aria-label="月間カレンダー">
+                <div class="month-calendar-header">
+                  <button id="prevMonth" type="button" aria-label="前の月">‹</button>
+                  <strong id="monthCalendarLabel">読み込み中...</strong>
+                  <button id="nextMonth" type="button" aria-label="次の月">›</button>
+                </div>
+                <div class="month-weekdays" aria-hidden="true">
+                  <span>日</span>
+                  <span>月</span>
+                  <span>火</span>
+                  <span>水</span>
+                  <span>木</span>
+                  <span>金</span>
+                  <span>土</span>
+                </div>
+                <div class="month-grid" id="monthGrid"></div>
+              </section>
+              <div class="calendar-side-panel">
               <form class="event-form" id="eventForm">
                 <input id="eventId" type="hidden">
                 <input id="eventTitle" type="text" autocomplete="off" placeholder="予定名">
@@ -148,6 +166,7 @@
               </form>
               <div class="calendar-event-list" id="calendarEventList">
                 <p class="feed-message">Googleカレンダーにログインすると予定を表示します。</p>
+              </div>
               </div>
           </div>
         </section>
@@ -206,6 +225,6 @@
       </div>
     </dialog>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260514-settings-toggle"></script>
   </body>
 </html>

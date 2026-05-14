@@ -101,6 +101,8 @@ let tokenClient;
 let gapiReady = false;
 let gisReady = false;
 let calendarSignedIn = false;
+let calendarVisibleMonth = new Date();
+let calendarEvents = [];
 
 const elements = {
   appShell: document.querySelector(".app-shell"),
@@ -150,6 +152,10 @@ const elements = {
   eventDescription: document.querySelector("#eventDescription"),
   cancelEventEdit: document.querySelector("#cancelEventEdit"),
   calendarEventList: document.querySelector("#calendarEventList"),
+  prevMonth: document.querySelector("#prevMonth"),
+  nextMonth: document.querySelector("#nextMonth"),
+  monthCalendarLabel: document.querySelector("#monthCalendarLabel"),
+  monthGrid: document.querySelector("#monthGrid"),
 };
 
 function setupSidebar() {
@@ -462,7 +468,18 @@ function setupGoogleCalendar() {
     }
   });
 
+  elements.prevMonth.addEventListener("click", () => {
+    calendarVisibleMonth = new Date(calendarVisibleMonth.getFullYear(), calendarVisibleMonth.getMonth() - 1, 1);
+    renderMonthCalendar(calendarEvents);
+  });
+
+  elements.nextMonth.addEventListener("click", () => {
+    calendarVisibleMonth = new Date(calendarVisibleMonth.getFullYear(), calendarVisibleMonth.getMonth() + 1, 1);
+    renderMonthCalendar(calendarEvents);
+  });
+
   initializeGoogleCalendar();
+  renderMonthCalendar([]);
 }
 
 function loadCalendarConfig() {
@@ -572,7 +589,9 @@ function signoutGoogleCalendar() {
   calendarSignedIn = false;
   updateCalendarAuthButton();
   updateCalendarStatus("ログアウトしました。");
+  calendarEvents = [];
   renderCalendarEvents([]);
+  renderMonthCalendar([]);
 }
 
 function updateCalendarAuthButton() {
@@ -594,7 +613,9 @@ async function listCalendarEvents() {
     orderBy: "startTime",
   });
 
-  renderCalendarEvents(response.result.items || []);
+  calendarEvents = response.result.items || [];
+  renderCalendarEvents(calendarEvents);
+  renderMonthCalendar(calendarEvents);
 }
 
 async function saveCalendarEvent() {
@@ -688,6 +709,48 @@ function renderCalendarEvents(events) {
       `;
     })
     .join("");
+}
+
+function renderMonthCalendar(events) {
+  const year = calendarVisibleMonth.getFullYear();
+  const month = calendarVisibleMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startDate = new Date(year, month, 1 - firstDay.getDay());
+
+  elements.monthCalendarLabel.textContent = new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "long",
+  }).format(calendarVisibleMonth);
+
+  elements.monthGrid.innerHTML = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + index);
+    const isCurrentMonth = date.getMonth() === month;
+    const isToday = date.toDateString() === new Date().toDateString();
+    const dayEvents = events.filter((event) => isSameCalendarDate(getEventStartDate(event), date)).slice(0, 3);
+
+    return `
+      <button class="month-day${isCurrentMonth ? "" : " is-muted"}${isToday ? " is-today" : ""}" type="button">
+        <span class="month-day-number">${date.getDate()}</span>
+        <span class="month-day-events">
+          ${dayEvents.map((event) => `<span>${escapeHtml(event.summary || "無題")}</span>`).join("")}
+        </span>
+      </button>
+    `;
+  }).join("");
+}
+
+function getEventStartDate(event) {
+  return new Date(event.start?.dateTime || event.start?.date || "");
+}
+
+function isSameCalendarDate(left, right) {
+  return (
+    !Number.isNaN(left.getTime()) &&
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
 }
 
 function fillEventForm(event) {
