@@ -226,6 +226,11 @@
         </div>
         <form class="event-form" id="eventForm">
           <input id="eventId" type="hidden">
+          <input id="eventBaseDate" type="hidden">
+          <div class="quick-shift-actions">
+            <button id="addDayShift" type="button">日勤 8:30-17:15</button>
+            <button id="addNightShift" type="button">宿直 8:30-翌8:30</button>
+          </div>
           <input id="eventTitle" type="text" autocomplete="off" placeholder="予定名">
           <input id="eventStart" type="datetime-local">
           <input id="eventEnd" type="datetime-local">

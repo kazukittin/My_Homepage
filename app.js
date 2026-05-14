@@ -151,10 +151,13 @@ const elements = {
   closeEventModal: document.querySelector("#closeEventModal"),
   eventModalTitle: document.querySelector("#eventModalTitle"),
   eventId: document.querySelector("#eventId"),
+  eventBaseDate: document.querySelector("#eventBaseDate"),
   eventTitle: document.querySelector("#eventTitle"),
   eventStart: document.querySelector("#eventStart"),
   eventEnd: document.querySelector("#eventEnd"),
   eventDescription: document.querySelector("#eventDescription"),
+  addDayShift: document.querySelector("#addDayShift"),
+  addNightShift: document.querySelector("#addNightShift"),
   cancelEventEdit: document.querySelector("#cancelEventEdit"),
   calendarEventList: document.querySelector("#calendarEventList"),
   prevMonth: document.querySelector("#prevMonth"),
@@ -458,6 +461,14 @@ function setupGoogleCalendar() {
     saveCalendarEvent();
   });
 
+  elements.addDayShift.addEventListener("click", () => {
+    saveQuickShift("日勤", "08:30", "17:15", 0);
+  });
+
+  elements.addNightShift.addEventListener("click", () => {
+    saveQuickShift("宿直", "08:30", "08:30", 1);
+  });
+
   elements.cancelEventEdit.addEventListener("click", () => {
     resetEventForm();
     elements.eventModal.close();
@@ -681,15 +692,19 @@ async function saveCalendarEvent() {
     });
     updateCalendarStatus("予定を更新しました。");
   } else {
-    await gapi.client.calendar.events.insert({
-      calendarId: "primary",
-      resource: event,
-    });
+    await createCalendarEvent(event);
     updateCalendarStatus("予定を追加しました。");
   }
 
   resetEventForm();
   await listCalendarEvents();
+}
+
+async function createCalendarEvent(event) {
+  return gapi.client.calendar.events.insert({
+    calendarId: "primary",
+    resource: event,
+  });
 }
 
 async function deleteCalendarEvent(eventId) {
@@ -787,11 +802,41 @@ function openEventModalForDate(dateText) {
   resetEventForm();
   const start = new Date(`${dateText}T09:00:00`);
   const end = new Date(`${dateText}T10:00:00`);
+  elements.eventBaseDate.value = dateText;
   elements.eventStart.value = toDateTimeLocal(start.toISOString());
   elements.eventEnd.value = toDateTimeLocal(end.toISOString());
   elements.eventModalTitle.textContent = "予定を追加";
   elements.eventModal.showModal();
   elements.eventTitle.focus();
+}
+
+async function saveQuickShift(title, startTime, endTime, endDateOffset) {
+  if (!calendarSignedIn) {
+    updateCalendarStatus("勤務予定を登録するにはログインしてください。");
+    return;
+  }
+
+  const baseDate = elements.eventBaseDate.value || toDateInputValue(new Date());
+  const start = new Date(`${baseDate}T${startTime}:00`);
+  const end = new Date(`${baseDate}T${endTime}:00`);
+  end.setDate(end.getDate() + endDateOffset);
+
+  await createCalendarEvent({
+    summary: title,
+    description: "",
+    start: {
+      dateTime: start.toISOString(),
+      timeZone: CONFIG.weather.timezone,
+    },
+    end: {
+      dateTime: end.toISOString(),
+      timeZone: CONFIG.weather.timezone,
+    },
+  });
+
+  updateCalendarStatus(`${title}を登録しました。`);
+  elements.eventModal.close();
+  await listCalendarEvents();
 }
 
 function getEventStartDate(event) {
@@ -821,6 +866,7 @@ function fillEventForm(event) {
 function resetEventForm() {
   elements.eventForm.reset();
   elements.eventId.value = "";
+  elements.eventBaseDate.value = "";
   elements.eventModalTitle.textContent = "予定を追加";
 }
 
