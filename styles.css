@@ -1155,9 +1155,10 @@ a {
   text-overflow: ellipsis;
   white-space: nowrap;
   padding: 2px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
-  color: #111412;
-  background: var(--accent);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.055);
   font-size: 11px;
 }
 
@@ -1197,26 +1198,31 @@ a {
 }
 
 .month-day-events span.is-day-shift {
+  border-color: rgba(142, 197, 163, 0.5);
   color: #102016;
   background: #8ec5a3;
 }
 
 .month-day-events span.is-night-shift {
+  border-color: rgba(138, 184, 255, 0.48);
   color: #0d1724;
   background: #8ab8ff;
 }
 
 .month-day-events span.is-play-event {
+  border-color: rgba(215, 164, 75, 0.5);
   color: #171207;
   background: #d7a44b;
 }
 
 .month-day-events span.is-test-event {
+  border-color: rgba(174, 140, 255, 0.48);
   color: #17111f;
   background: #ae8cff;
 }
 
 .month-day-events span.is-other-event {
+  border-color: rgba(155, 168, 159, 0.48);
   color: #111412;
   background: #9ba89f;
 }

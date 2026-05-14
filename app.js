@@ -94,6 +94,14 @@ const CALENDAR_EVENT_TYPES = [
   { keyword: "その他", className: "is-other-event", colorId: "8" },
 ];
 
+const CALENDAR_COLOR_CLASS_MAP = {
+  3: "is-test-event",
+  6: "is-play-event",
+  8: "is-other-event",
+  9: "is-night-shift",
+  10: "is-day-shift",
+};
+
 const sidebarKey = "private-start.sidebarCollapsed";
 const pageKey = "private-start.activePage";
 const calendarConfigKey = "private-start.calendarApiConfig";
@@ -782,9 +790,10 @@ function renderCalendarEvents(events) {
         description: event.description || "",
         start,
         end: event.end?.dateTime || event.end?.date || "",
+        colorId: event.colorId || "",
       };
       calendarEventMap.set(event.id, eventData);
-      const eventType = getCalendarEventType(event.summary || "");
+      const eventType = getCalendarEventType(event.summary || "", event.colorId);
       return `
         <article class="calendar-event ${eventType.className}">
           <div>
@@ -827,7 +836,7 @@ function renderMonthCalendar(events) {
         <span class="month-day-events">
           ${dayEvents
             .map((event) => {
-              const eventType = getCalendarEventType(event.summary || "");
+              const eventType = getCalendarEventType(event.summary || "", event.colorId);
               return `<span class="${eventType.className}">${escapeHtml(event.summary || "無題")}</span>`;
             })
             .join("")}
@@ -837,10 +846,13 @@ function renderMonthCalendar(events) {
   }).join("");
 }
 
-function getCalendarEventType(summary) {
+function getCalendarEventType(summary, colorId = "") {
   const matchedType = CALENDAR_EVENT_TYPES.find((type) => summary.includes(type.keyword));
   if (matchedType) {
     return matchedType;
+  }
+  if (CALENDAR_COLOR_CLASS_MAP[colorId]) {
+    return { className: CALENDAR_COLOR_CLASS_MAP[colorId], colorId };
   }
   if (summary.includes("日勤")) {
     return { className: "is-day-shift" };
@@ -855,7 +867,10 @@ function getDominantCalendarEventType(events) {
   return (
     CALENDAR_EVENT_TYPES.find((type) =>
       events.some((event) => (event.summary || "").includes(type.keyword))
-    ) || { className: "is-regular-event" }
+    ) ||
+    events
+      .map((event) => getCalendarEventType(event.summary || "", event.colorId))
+      .find((type) => type.className !== "is-regular-event") || { className: "is-regular-event" }
   );
 }
 
