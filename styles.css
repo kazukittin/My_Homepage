@@ -605,6 +605,43 @@ a {
   font-weight: 750;
 }
 
+.category-manager {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.category-manager-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 64px;
+  gap: 6px;
+}
+
+.category-manager-row input,
+.category-manager-row button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.category-manager-row input {
+  padding: 0 10px;
+  color: var(--text);
+  background: #111513;
+}
+
+.category-manager-row button {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.category-manager-row button:last-child {
+  color: #f3b7aa;
+}
+
 .links-card:not(.is-editing) .shortcut-delete {
   display: none;
 }
@@ -951,6 +988,7 @@ a {
 }
 
 .settings-card input,
+.settings-card select,
 .settings-card textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -960,7 +998,8 @@ a {
   outline: none;
 }
 
-.settings-card input {
+.settings-card input,
+.settings-card select {
   min-height: 38px;
   padding: 0 10px;
   margin-bottom: 10px;
@@ -1017,6 +1056,29 @@ a {
   background: rgba(255, 255, 255, 0.04);
   cursor: pointer;
   font-weight: 750;
+}
+
+.settings-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.settings-actions button {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.settings-actions button:first-child {
+  border-color: transparent;
+  color: #111412;
+  background: var(--accent);
 }
 
 .calendar-help {
@@ -1415,7 +1477,9 @@ a {
   .news-list,
   .link-groups,
   .shortcut-form,
-  .category-form {
+  .category-form,
+  .category-manager-row,
+  .settings-actions {
     grid-template-columns: 1fr;
   }
 

@@ -112,6 +112,30 @@ const newsCachePrefix = "private-start.newsCache.";
 const newsCacheMaxAge = 15 * 60 * 1000;
 const miniMemoKey = "private-start.miniMemo";
 const calendarTokenKey = "private-start.calendarToken";
+const backgroundSettingsKey = "private-start.backgroundSettings";
+
+const BACKGROUND_PRESETS = {
+  forest: {
+    color: "#111412",
+    background:
+      "linear-gradient(120deg, rgba(142, 197, 163, 0.08), transparent 34%), linear-gradient(280deg, rgba(215, 164, 75, 0.06), transparent 40%), #111412",
+  },
+  slate: {
+    color: "#111315",
+    background:
+      "linear-gradient(120deg, rgba(148, 163, 184, 0.1), transparent 34%), linear-gradient(280deg, rgba(94, 169, 255, 0.06), transparent 42%), #111315",
+  },
+  midnight: {
+    color: "#0c1016",
+    background:
+      "linear-gradient(120deg, rgba(94, 169, 255, 0.11), transparent 36%), linear-gradient(280deg, rgba(174, 140, 255, 0.07), transparent 42%), #0c1016",
+  },
+  warm: {
+    color: "#14120f",
+    background:
+      "linear-gradient(120deg, rgba(215, 164, 75, 0.11), transparent 34%), linear-gradient(280deg, rgba(142, 197, 163, 0.06), transparent 42%), #14120f",
+  },
+};
 
 let shortcutGroups = loadShortcutGroups();
 let tokenClient;
@@ -143,6 +167,7 @@ const elements = {
   shortcutUrl: document.querySelector("#shortcutUrl"),
   shortcutCategory: document.querySelector("#shortcutCategory"),
   categoryName: document.querySelector("#categoryName"),
+  categoryManager: document.querySelector("#categoryManager"),
   linkGroups: document.querySelector("#linkGroups"),
   weatherPlace: document.querySelector("#weatherPlace"),
   weatherIcon: document.querySelector("#weatherIcon"),
@@ -181,6 +206,10 @@ const elements = {
   nextMonth: document.querySelector("#nextMonth"),
   monthCalendarLabel: document.querySelector("#monthCalendarLabel"),
   monthGrid: document.querySelector("#monthGrid"),
+  backgroundPreset: document.querySelector("#backgroundPreset"),
+  backgroundImageUrl: document.querySelector("#backgroundImageUrl"),
+  saveBackgroundSettings: document.querySelector("#saveBackgroundSettings"),
+  resetBackgroundSettings: document.querySelector("#resetBackgroundSettings"),
 };
 
 function setupSidebar() {
@@ -339,9 +368,31 @@ function setupShortcuts() {
     shortcutGroups.push({ category, items: [] });
     saveShortcutGroups();
     renderCategoryOptions();
+    renderCategoryManager();
     renderLinks();
     elements.shortcutCategory.value = category;
     elements.categoryForm.reset();
+  });
+
+  elements.categoryManager.addEventListener("click", (event) => {
+    const renameButton = event.target.closest("[data-rename-category]");
+    const deleteButton = event.target.closest("[data-delete-category]");
+    if (!renameButton && !deleteButton) {
+      return;
+    }
+
+    const groupIndex = Number((renameButton || deleteButton).dataset.groupIndex);
+    if (!Number.isInteger(groupIndex) || !shortcutGroups[groupIndex]) {
+      return;
+    }
+
+    if (renameButton) {
+      renameShortcutCategory(groupIndex);
+    }
+
+    if (deleteButton) {
+      deleteShortcutCategory(groupIndex);
+    }
   });
 
   elements.linkGroups.addEventListener("click", (event) => {
@@ -356,6 +407,8 @@ function setupShortcuts() {
     saveShortcutGroups();
     renderLinks();
   });
+
+  renderCategoryManager();
 }
 
 function setShortcutEditMode(isEditing) {
@@ -368,6 +421,60 @@ function renderCategoryOptions() {
   elements.shortcutCategory.innerHTML = shortcutGroups
     .map((group) => `<option value="${escapeAttribute(group.category)}">${escapeHtml(group.category)}</option>`)
     .join("");
+}
+
+function renderCategoryManager() {
+  elements.categoryManager.innerHTML = shortcutGroups
+    .map(
+      (group, groupIndex) => `
+        <div class="category-manager-row">
+          <input type="text" value="${escapeAttribute(group.category)}" data-category-name="${groupIndex}" aria-label="${escapeAttribute(group.category)}のカテゴリ名">
+          <button type="button" data-rename-category data-group-index="${groupIndex}">変更</button>
+          <button type="button" data-delete-category data-group-index="${groupIndex}">削除</button>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renameShortcutCategory(groupIndex) {
+  const input = elements.categoryManager.querySelector(`[data-category-name="${groupIndex}"]`);
+  const nextName = input?.value.trim();
+  const currentName = shortcutGroups[groupIndex].category;
+
+  if (!nextName || nextName === currentName) {
+    return;
+  }
+
+  if (shortcutGroups.some((group, index) => index !== groupIndex && group.category === nextName)) {
+    input.focus();
+    return;
+  }
+
+  shortcutGroups[groupIndex].category = nextName;
+  saveShortcutGroups();
+  renderCategoryOptions();
+  renderCategoryManager();
+  renderLinks();
+  elements.shortcutCategory.value = nextName;
+}
+
+function deleteShortcutCategory(groupIndex) {
+  if (shortcutGroups.length <= 1) {
+    return;
+  }
+
+  const group = shortcutGroups[groupIndex];
+  const hasItems = group.items.length > 0;
+  if (hasItems && !window.confirm(`${group.category}のショートカットも削除します。よろしいですか？`)) {
+    return;
+  }
+
+  shortcutGroups.splice(groupIndex, 1);
+  saveShortcutGroups();
+  renderCategoryOptions();
+  renderCategoryManager();
+  renderLinks();
 }
 
 function renderLinks() {
@@ -441,6 +548,59 @@ function normalizeUrl(value) {
   }
 
   return `https://${value}`;
+}
+
+function setupBackgroundSettings() {
+  const settings = loadBackgroundSettings();
+  elements.backgroundPreset.value = settings.preset;
+  elements.backgroundImageUrl.value = settings.imageUrl;
+  applyBackgroundSettings(settings);
+
+  elements.saveBackgroundSettings.addEventListener("click", () => {
+    const nextSettings = {
+      preset: elements.backgroundPreset.value,
+      imageUrl: elements.backgroundImageUrl.value.trim(),
+    };
+    saveBackgroundSettings(nextSettings);
+    applyBackgroundSettings(nextSettings);
+  });
+
+  elements.resetBackgroundSettings.addEventListener("click", () => {
+    localStorage.removeItem(backgroundSettingsKey);
+    const defaultSettings = loadBackgroundSettings();
+    elements.backgroundPreset.value = defaultSettings.preset;
+    elements.backgroundImageUrl.value = "";
+    applyBackgroundSettings(defaultSettings);
+  });
+}
+
+function loadBackgroundSettings() {
+  try {
+    const settings = JSON.parse(localStorage.getItem(backgroundSettingsKey));
+    const preset = BACKGROUND_PRESETS[settings?.preset] ? settings.preset : "forest";
+    return {
+      preset,
+      imageUrl: typeof settings?.imageUrl === "string" ? settings.imageUrl : "",
+    };
+  } catch {
+    return { preset: "forest", imageUrl: "" };
+  }
+}
+
+function saveBackgroundSettings(settings) {
+  localStorage.setItem(backgroundSettingsKey, JSON.stringify(settings));
+}
+
+function applyBackgroundSettings(settings) {
+  const preset = BACKGROUND_PRESETS[settings.preset] || BACKGROUND_PRESETS.forest;
+  document.documentElement.style.setProperty("--bg", preset.color);
+
+  if (settings.imageUrl) {
+    document.body.style.background = `linear-gradient(rgba(17, 20, 18, 0.72), rgba(17, 20, 18, 0.82)), url(${JSON.stringify(settings.imageUrl)}) center / cover fixed, ${preset.color}`;
+    return;
+  }
+
+  document.body.style.background = preset.background;
 }
 
 function setupGoogleCalendar() {
@@ -1430,6 +1590,7 @@ updateClock();
 setupSearch();
 setupMiniMemo();
 setupShortcuts();
+setupBackgroundSettings();
 setupGoogleCalendar();
 loadWeather();
 loadNews();

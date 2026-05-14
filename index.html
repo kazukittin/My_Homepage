@@ -184,6 +184,24 @@
                 <code id="calendarOrigin">読み込み中...</code>
               </div>
             </section>
+            <section class="settings-card" aria-label="背景設定">
+              <p class="eyebrow">表示</p>
+              <h2>背景</h2>
+              <label for="backgroundPreset">背景プリセット</label>
+              <select id="backgroundPreset">
+                <option value="forest">深い緑</option>
+                <option value="slate">静かなグレー</option>
+                <option value="midnight">夜</option>
+                <option value="warm">暖色</option>
+              </select>
+              <label for="backgroundImageUrl">背景画像URL</label>
+              <input id="backgroundImageUrl" type="url" autocomplete="off" placeholder="https://example.com/background.jpg">
+              <div class="settings-actions">
+                <button id="saveBackgroundSettings" type="button">背景を保存</button>
+                <button id="resetBackgroundSettings" type="button">初期状態に戻す</button>
+              </div>
+              <p class="calendar-help">画像URLを空にすると、プリセットの背景だけを使います。</p>
+            </section>
           </div>
         </section>
       </main>
@@ -213,6 +231,7 @@
               <input id="categoryName" type="text" autocomplete="off" placeholder="新しいカテゴリ名">
               <button type="submit">カテゴリ追加</button>
             </form>
+            <div class="category-manager" id="categoryManager" aria-label="カテゴリ管理"></div>
           </section>
         </div>
       </div>
