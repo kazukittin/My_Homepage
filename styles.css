@@ -652,6 +652,10 @@ a {
   display: none;
 }
 
+.links-card:not(.is-editing) .shortcut-item {
+  grid-template-columns: 1fr;
+}
+
 .shortcut-modal {
   width: min(560px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
