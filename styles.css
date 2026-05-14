@@ -1155,6 +1155,28 @@ a {
   font-size: 11px;
 }
 
+.month-day-events span.is-day-shift,
+.calendar-event.is-day-shift {
+  border-color: rgba(142, 197, 163, 0.65);
+  background: rgba(142, 197, 163, 0.12);
+}
+
+.month-day-events span.is-night-shift,
+.calendar-event.is-night-shift {
+  border-color: rgba(94, 169, 255, 0.6);
+  background: rgba(94, 169, 255, 0.12);
+}
+
+.month-day-events span.is-day-shift {
+  color: #102016;
+  background: #8ec5a3;
+}
+
+.month-day-events span.is-night-shift {
+  color: #0d1724;
+  background: #8ab8ff;
+}
+
 .event-modal {
   width: min(520px, calc(100vw - 32px));
   padding: 0;
@@ -1255,6 +1277,16 @@ a {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.025);
+}
+
+.calendar-event.is-day-shift strong::before {
+  content: "日 ";
+  color: var(--accent);
+}
+
+.calendar-event.is-night-shift strong::before {
+  content: "宿 ";
+  color: #8ab8ff;
 }
 
 .calendar-event strong,

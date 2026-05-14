@@ -105,6 +105,7 @@ let calendarSignedIn = false;
 let calendarVisibleMonth = new Date();
 let calendarEvents = [];
 let silentCalendarAuthTried = false;
+const calendarEventMap = new Map();
 
 const elements = {
   appShell: document.querySelector(".app-shell"),
@@ -488,7 +489,10 @@ function setupGoogleCalendar() {
     const editButton = event.target.closest("[data-edit-event]");
     const deleteButton = event.target.closest("[data-delete-event]");
     if (editButton) {
-      fillEventForm(JSON.parse(editButton.dataset.event));
+      const eventData = calendarEventMap.get(editButton.dataset.eventId);
+      if (eventData) {
+        fillEventForm(eventData);
+      }
     }
     if (deleteButton) {
       deleteCalendarEvent(deleteButton.dataset.eventId);
@@ -738,6 +742,7 @@ function buildCalendarEvent() {
 }
 
 function renderCalendarEvents(events) {
+  calendarEventMap.clear();
   if (!events.length) {
     elements.calendarEventList.innerHTML = '<p class="feed-message">予定はありません。</p>';
     return;
@@ -746,21 +751,23 @@ function renderCalendarEvents(events) {
   elements.calendarEventList.innerHTML = events
     .map((event) => {
       const start = event.start?.dateTime || event.start?.date || "";
-      const eventData = escapeAttribute(JSON.stringify({
+      const eventData = {
         id: event.id,
         summary: event.summary || "",
         description: event.description || "",
         start,
         end: event.end?.dateTime || event.end?.date || "",
-      }));
+      };
+      calendarEventMap.set(event.id, eventData);
+      const eventType = getCalendarEventType(event.summary || "");
       return `
-        <article class="calendar-event">
+        <article class="calendar-event ${eventType.className}">
           <div>
             <strong>${escapeHtml(event.summary || "無題")}</strong>
             <span>${escapeHtml(formatCalendarDate(start))}</span>
           </div>
           <div class="calendar-event-actions">
-            <button type="button" data-edit-event="${eventData}">編集</button>
+            <button type="button" data-edit-event data-event-id="${escapeAttribute(event.id)}">編集</button>
             <button type="button" data-delete-event data-event-id="${escapeAttribute(event.id)}">削除</button>
           </div>
         </article>
@@ -791,11 +798,26 @@ function renderMonthCalendar(events) {
       <button class="month-day${isCurrentMonth ? "" : " is-muted"}${isToday ? " is-today" : ""}" type="button" data-calendar-date="${toDateInputValue(date)}">
         <span class="month-day-number">${date.getDate()}</span>
         <span class="month-day-events">
-          ${dayEvents.map((event) => `<span>${escapeHtml(event.summary || "無題")}</span>`).join("")}
+          ${dayEvents
+            .map((event) => {
+              const eventType = getCalendarEventType(event.summary || "");
+              return `<span class="${eventType.className}">${escapeHtml(event.summary || "無題")}</span>`;
+            })
+            .join("")}
         </span>
       </button>
     `;
   }).join("");
+}
+
+function getCalendarEventType(summary) {
+  if (summary.includes("日勤")) {
+    return { className: "is-day-shift" };
+  }
+  if (summary.includes("宿直")) {
+    return { className: "is-night-shift" };
+  }
+  return { className: "is-regular-event" };
 }
 
 function openEventModalForDate(dateText) {
