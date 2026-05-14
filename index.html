@@ -160,15 +160,11 @@
             <section class="settings-card" aria-label="GoogleカレンダーAPI設定">
               <p class="eyebrow">Google Calendar API</p>
               <h2>カレンダー連携</h2>
-              <button class="settings-edit-toggle" id="calendarConfigEditToggle" type="button" aria-pressed="false">設定を編集</button>
               <label for="calendarClientId">OAuth Client ID</label>
               <input id="calendarClientId" type="text" autocomplete="off" placeholder="Google Cloud の Client ID">
               <label for="calendarApiKey">API Key</label>
               <input id="calendarApiKey" type="text" autocomplete="off" placeholder="Google Calendar API の API Key">
-              <div class="calendar-actions">
-                <button id="saveCalendarConfig" type="button">設定を保存</button>
-                <button id="clearCalendarConfig" type="button">解除</button>
-              </div>
+              <button class="settings-edit-toggle" id="calendarConfigEditToggle" type="button" aria-pressed="false">設定を編集</button>
               <button class="calendar-auth-toggle" id="calendarAuthToggle" type="button">ログイン</button>
               <p class="calendar-help" id="calendarStatus">Client ID と API Key を保存すると連携できます。</p>
               <div class="origin-box">

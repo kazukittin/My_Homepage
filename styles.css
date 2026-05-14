@@ -924,8 +924,9 @@ a {
 }
 
 .settings-edit-toggle {
+  width: 100%;
   min-height: 34px;
-  margin-bottom: 14px;
+  margin-top: 10px;
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -975,11 +976,6 @@ a {
 
 .settings-card input[readonly]::placeholder {
   color: rgba(155, 168, 159, 0.45);
-}
-
-.calendar-actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
 }
 
 .calendar-auth-toggle {
