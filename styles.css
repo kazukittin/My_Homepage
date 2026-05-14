@@ -1130,12 +1130,18 @@ a {
 }
 
 .month-day.is-today {
-  border-color: rgba(142, 197, 163, 0.72);
-  background: rgba(142, 197, 163, 0.08);
+  box-shadow: inset 0 0 0 2px rgba(245, 214, 122, 0.78);
 }
 
 .month-day-number {
+  width: fit-content;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
   font-weight: 800;
+  line-height: 22px;
+  text-align: center;
 }
 
 .month-day-events {
@@ -1183,6 +1189,11 @@ a {
 .calendar-event.is-other-event {
   border-color: rgba(155, 168, 159, 0.58);
   background: rgba(155, 168, 159, 0.1);
+}
+
+.month-day.is-today .month-day-number {
+  color: #171207;
+  background: #f5d67a;
 }
 
 .month-day-events span.is-day-shift {
