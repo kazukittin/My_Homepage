@@ -138,6 +138,7 @@ const elements = {
   newsSourceLink: document.querySelector("#newsSourceLink"),
   calendarClientId: document.querySelector("#calendarClientId"),
   calendarApiKey: document.querySelector("#calendarApiKey"),
+  calendarConfigEditToggle: document.querySelector("#calendarConfigEditToggle"),
   saveCalendarConfig: document.querySelector("#saveCalendarConfig"),
   clearCalendarConfig: document.querySelector("#clearCalendarConfig"),
   authorizeCalendar: document.querySelector("#authorizeCalendar"),
@@ -419,17 +420,26 @@ function setupGoogleCalendar() {
   elements.calendarClientId.value = config.clientId;
   elements.calendarApiKey.value = config.apiKey;
   elements.calendarOrigin.textContent = getOAuthOrigin();
+  setCalendarConfigEditing(false);
   updateCalendarStatus();
+
+  elements.calendarConfigEditToggle.addEventListener("click", () => {
+    setCalendarConfigEditing(!isCalendarConfigEditing());
+  });
 
   elements.saveCalendarConfig.addEventListener("click", () => {
     saveCalendarConfig({
       clientId: elements.calendarClientId.value.trim(),
       apiKey: elements.calendarApiKey.value.trim(),
     });
+    setCalendarConfigEditing(false);
     initializeGoogleCalendar();
   });
 
   elements.clearCalendarConfig.addEventListener("click", () => {
+    if (!window.confirm("Google Calendar API設定を解除しますか？")) {
+      return;
+    }
     localStorage.removeItem(calendarConfigKey);
     elements.calendarClientId.value = "";
     elements.calendarApiKey.value = "";
@@ -475,6 +485,19 @@ function loadCalendarConfig() {
   } catch {
     return { clientId: "", apiKey: "" };
   }
+}
+
+function isCalendarConfigEditing() {
+  return elements.calendarConfigEditToggle.getAttribute("aria-pressed") === "true";
+}
+
+function setCalendarConfigEditing(isEditing) {
+  elements.calendarConfigEditToggle.setAttribute("aria-pressed", String(isEditing));
+  elements.calendarConfigEditToggle.textContent = isEditing ? "編集を終了" : "設定を編集";
+  elements.calendarClientId.readOnly = !isEditing;
+  elements.calendarApiKey.readOnly = !isEditing;
+  elements.saveCalendarConfig.disabled = !isEditing;
+  elements.clearCalendarConfig.disabled = !isEditing;
 }
 
 function saveCalendarConfig(config) {
