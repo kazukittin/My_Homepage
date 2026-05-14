@@ -1155,16 +1155,34 @@ a {
   font-size: 11px;
 }
 
-.month-day-events span.is-day-shift,
+.month-day.is-day-shift,
 .calendar-event.is-day-shift {
   border-color: rgba(142, 197, 163, 0.65);
   background: rgba(142, 197, 163, 0.12);
 }
 
-.month-day-events span.is-night-shift,
+.month-day.is-night-shift,
 .calendar-event.is-night-shift {
   border-color: rgba(94, 169, 255, 0.6);
   background: rgba(94, 169, 255, 0.12);
+}
+
+.month-day.is-play-event,
+.calendar-event.is-play-event {
+  border-color: rgba(215, 164, 75, 0.65);
+  background: rgba(215, 164, 75, 0.12);
+}
+
+.month-day.is-test-event,
+.calendar-event.is-test-event {
+  border-color: rgba(174, 140, 255, 0.6);
+  background: rgba(174, 140, 255, 0.12);
+}
+
+.month-day.is-other-event,
+.calendar-event.is-other-event {
+  border-color: rgba(155, 168, 159, 0.58);
+  background: rgba(155, 168, 159, 0.1);
 }
 
 .month-day-events span.is-day-shift {
@@ -1175,6 +1193,21 @@ a {
 .month-day-events span.is-night-shift {
   color: #0d1724;
   background: #8ab8ff;
+}
+
+.month-day-events span.is-play-event {
+  color: #171207;
+  background: #d7a44b;
+}
+
+.month-day-events span.is-test-event {
+  color: #17111f;
+  background: #ae8cff;
+}
+
+.month-day-events span.is-other-event {
+  color: #111412;
+  background: #9ba89f;
 }
 
 .event-modal {
@@ -1279,14 +1312,9 @@ a {
   background: rgba(255, 255, 255, 0.025);
 }
 
-.calendar-event.is-day-shift strong::before {
-  content: "日 ";
-  color: var(--accent);
-}
-
+.calendar-event.is-day-shift strong::before,
 .calendar-event.is-night-shift strong::before {
-  content: "宿 ";
-  color: #8ab8ff;
+  content: none;
 }
 
 .calendar-event strong,

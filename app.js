@@ -86,6 +86,14 @@ const WEATHER_CODES = {
   99: ["⛈️", "雷雨"],
 };
 
+const CALENDAR_EVENT_TYPES = [
+  { keyword: "日勤", className: "is-day-shift", colorId: "10" },
+  { keyword: "宿直", className: "is-night-shift", colorId: "9" },
+  { keyword: "遊び", className: "is-play-event", colorId: "6" },
+  { keyword: "テスト", className: "is-test-event", colorId: "3" },
+  { keyword: "その他", className: "is-other-event", colorId: "8" },
+];
+
 const sidebarKey = "private-start.sidebarCollapsed";
 const pageKey = "private-start.activePage";
 const calendarConfigKey = "private-start.calendarApiConfig";
@@ -727,8 +735,10 @@ async function deleteCalendarEvent(eventId) {
 function buildCalendarEvent() {
   const start = elements.eventStart.value;
   const end = elements.eventEnd.value;
-  return {
-    summary: elements.eventTitle.value.trim(),
+  const summary = elements.eventTitle.value.trim();
+  const eventType = getCalendarEventType(summary);
+  const event = {
+    summary,
     description: elements.eventDescription.value.trim(),
     start: {
       dateTime: start ? new Date(start).toISOString() : "",
@@ -739,6 +749,12 @@ function buildCalendarEvent() {
       timeZone: CONFIG.weather.timezone,
     },
   };
+
+  if (eventType.colorId) {
+    event.colorId = eventType.colorId;
+  }
+
+  return event;
 }
 
 function renderCalendarEvents(events) {
@@ -792,10 +808,12 @@ function renderMonthCalendar(events) {
     date.setDate(startDate.getDate() + index);
     const isCurrentMonth = date.getMonth() === month;
     const isToday = date.toDateString() === new Date().toDateString();
-    const dayEvents = events.filter((event) => isSameCalendarDate(getEventStartDate(event), date)).slice(0, 3);
+    const allDayEvents = events.filter((event) => isSameCalendarDate(getEventStartDate(event), date));
+    const dayEvents = allDayEvents.slice(0, 3);
+    const dayType = getDominantCalendarEventType(allDayEvents);
 
     return `
-      <button class="month-day${isCurrentMonth ? "" : " is-muted"}${isToday ? " is-today" : ""}" type="button" data-calendar-date="${toDateInputValue(date)}">
+      <button class="month-day ${dayType.className}${isCurrentMonth ? "" : " is-muted"}${isToday ? " is-today" : ""}" type="button" data-calendar-date="${toDateInputValue(date)}">
         <span class="month-day-number">${date.getDate()}</span>
         <span class="month-day-events">
           ${dayEvents
@@ -811,6 +829,10 @@ function renderMonthCalendar(events) {
 }
 
 function getCalendarEventType(summary) {
+  const matchedType = CALENDAR_EVENT_TYPES.find((type) => summary.includes(type.keyword));
+  if (matchedType) {
+    return matchedType;
+  }
   if (summary.includes("日勤")) {
     return { className: "is-day-shift" };
   }
@@ -818,6 +840,14 @@ function getCalendarEventType(summary) {
     return { className: "is-night-shift" };
   }
   return { className: "is-regular-event" };
+}
+
+function getDominantCalendarEventType(events) {
+  return (
+    CALENDAR_EVENT_TYPES.find((type) =>
+      events.some((event) => (event.summary || "").includes(type.keyword))
+    ) || { className: "is-regular-event" }
+  );
 }
 
 function openEventModalForDate(dateText) {
@@ -843,7 +873,8 @@ async function saveQuickShift(title, startTime, endTime, endDateOffset) {
   const end = new Date(`${baseDate}T${endTime}:00`);
   end.setDate(end.getDate() + endDateOffset);
 
-  await createCalendarEvent({
+  const eventType = getCalendarEventType(title);
+  const event = {
     summary: title,
     description: "",
     start: {
@@ -854,7 +885,13 @@ async function saveQuickShift(title, startTime, endTime, endDateOffset) {
       dateTime: end.toISOString(),
       timeZone: CONFIG.weather.timezone,
     },
-  });
+  };
+
+  if (eventType.colorId) {
+    event.colorId = eventType.colorId;
+  }
+
+  await createCalendarEvent(event);
 
   updateCalendarStatus(`${title}を登録しました。`);
   elements.eventModal.close();
