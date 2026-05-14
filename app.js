@@ -525,7 +525,6 @@ function renderLinks() {
                   <a class="shortcut-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener">
                     <span class="shortcut-text">
                       <span>${escapeHtml(item.label)}</span>
-                      <span class="shortcut-url">${formatUrl(item.url)}</span>
                     </span>
                     <img class="shortcut-icon" src="${escapeAttribute(getShortcutIconUrl(item.url))}" alt="" loading="lazy">
                   </a>

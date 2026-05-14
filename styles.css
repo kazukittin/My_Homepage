@@ -765,6 +765,9 @@ a {
   margin: 0;
   padding: 0;
   list-style: none;
+  max-height: 194px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .shortcut-item {
@@ -779,8 +782,8 @@ a {
   grid-template-columns: minmax(0, 1fr) 24px;
   gap: 10px;
   align-items: center;
-  min-height: 36px;
-  padding: 8px 10px;
+  min-height: 32px;
+  padding: 6px 9px;
   border: 1px solid transparent;
   border-radius: 8px;
   color: var(--text);
@@ -794,8 +797,8 @@ a {
 }
 
 .shortcut-icon {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.08);
   object-fit: contain;
