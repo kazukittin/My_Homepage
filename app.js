@@ -104,6 +104,7 @@ let gisReady = false;
 let calendarSignedIn = false;
 let calendarVisibleMonth = new Date();
 let calendarEvents = [];
+let silentCalendarAuthTried = false;
 
 const elements = {
   appShell: document.querySelector(".app-shell"),
@@ -556,7 +557,10 @@ function initializeGoogleCalendar() {
       });
       gapiReady = true;
       setupTokenClient();
-      await restoreCalendarToken();
+      const restored = await restoreCalendarToken();
+      if (!restored) {
+        trySilentCalendarAuth();
+      }
       if (!calendarSignedIn) {
         updateCalendarStatus("ログインすると予定を編集できます。");
       }
@@ -605,6 +609,16 @@ function authorizeGoogleCalendar() {
   }
 
   tokenClient.requestAccessToken({ prompt: calendarSignedIn ? "" : "consent" });
+}
+
+function trySilentCalendarAuth() {
+  if (silentCalendarAuthTried || calendarSignedIn || !tokenClient) {
+    return;
+  }
+
+  silentCalendarAuthTried = true;
+  updateCalendarStatus("ログイン状態を確認しています...");
+  tokenClient.requestAccessToken({ prompt: "" });
 }
 
 function signoutGoogleCalendar() {
@@ -872,7 +886,7 @@ async function restoreCalendarToken() {
     const token = JSON.parse(localStorage.getItem(calendarTokenKey));
     if (!token?.access_token || Date.now() > token.expires_at - 60000) {
       localStorage.removeItem(calendarTokenKey);
-      return;
+      return false;
     }
 
     gapi.client.setToken({ access_token: token.access_token });
@@ -880,8 +894,10 @@ async function restoreCalendarToken() {
     updateCalendarAuthButton();
     updateCalendarStatus("ログイン状態を復元しました。");
     await listCalendarEvents();
+    return true;
   } catch {
     localStorage.removeItem(calendarTokenKey);
+    return false;
   }
 }
 
