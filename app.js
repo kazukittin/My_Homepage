@@ -112,6 +112,8 @@ const newsCachePrefix = "private-start.newsCache.";
 const newsCacheMaxAge = 15 * 60 * 1000;
 const miniMemoKey = "private-start.miniMemo";
 const calendarTokenKey = "private-start.calendarToken";
+const calendarEventsCacheKey = "private-start.calendarEventsCache";
+const calendarConsentKey = "private-start.calendarConsentGranted";
 const backgroundSettingsKey = "private-start.backgroundSettings";
 
 const BACKGROUND_PRESETS = {
@@ -649,6 +651,7 @@ function setupGoogleCalendar() {
   elements.calendarOrigin.textContent = getOAuthOrigin();
   setCalendarConfigEditing(false);
   updateCalendarStatus();
+  renderCachedCalendarEvents();
 
   elements.calendarConfigEditToggle.addEventListener("click", () => {
     if (!isCalendarConfigEditing()) {
@@ -797,10 +800,10 @@ function initializeGoogleCalendar() {
       setupTokenClient();
       const restored = await restoreCalendarToken();
       if (!restored) {
-        trySilentCalendarAuth();
+        updateCalendarAuthButton();
       }
       if (!calendarSignedIn) {
-        updateCalendarStatus("ログインすると予定を編集できます。");
+        updateCalendarStatus("前回の予定を表示中です。編集や最新取得にはログインしてください。");
       }
     });
   });
@@ -826,6 +829,7 @@ function setupTokenClient() {
         return;
       }
       calendarSignedIn = true;
+      localStorage.setItem(calendarConsentKey, "true");
       saveCalendarToken(response);
       updateCalendarAuthButton();
       updateCalendarStatus("ログイン済み。予定を編集できます。");
@@ -846,7 +850,15 @@ function authorizeGoogleCalendar() {
     return;
   }
 
-  tokenClient.requestAccessToken({ prompt: calendarSignedIn ? "" : "consent" });
+  tokenClient.requestAccessToken({ prompt: getCalendarAuthPrompt() });
+}
+
+function getCalendarAuthPrompt() {
+  if (calendarSignedIn || localStorage.getItem(calendarConsentKey) === "true") {
+    return "";
+  }
+
+  return "consent";
 }
 
 function trySilentCalendarAuth() {
@@ -857,6 +869,18 @@ function trySilentCalendarAuth() {
   silentCalendarAuthTried = true;
   updateCalendarStatus("ログイン状態を確認しています...");
   tokenClient.requestAccessToken({ prompt: "" });
+}
+
+function renderCachedCalendarEvents() {
+  const cachedEvents = loadCalendarEventsCache();
+  if (!cachedEvents.length) {
+    return;
+  }
+
+  calendarEvents = cachedEvents;
+  renderCalendarEvents(getCurrentWeekEvents(calendarEvents));
+  renderMonthCalendar(calendarEvents);
+  updateCalendarStatus("前回取得した予定を表示中です。");
 }
 
 function signoutGoogleCalendar() {
@@ -896,6 +920,7 @@ async function listCalendarEvents() {
   });
 
   calendarEvents = response.result.items || [];
+  saveCalendarEventsCache(calendarEvents);
   renderCalendarEvents(getCurrentWeekEvents(calendarEvents));
   renderMonthCalendar(calendarEvents);
 }
@@ -1246,6 +1271,25 @@ function saveCalendarToken(response) {
     JSON.stringify({
       access_token: response.access_token,
       expires_at: Date.now() + Number(response.expires_in || 0) * 1000,
+    })
+  );
+}
+
+function loadCalendarEventsCache() {
+  try {
+    const cache = JSON.parse(localStorage.getItem(calendarEventsCacheKey));
+    return Array.isArray(cache?.items) ? cache.items : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCalendarEventsCache(items) {
+  localStorage.setItem(
+    calendarEventsCacheKey,
+    JSON.stringify({
+      savedAt: Date.now(),
+      items,
     })
   );
 }

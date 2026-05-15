@@ -765,9 +765,29 @@ a {
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: 194px;
+  max-height: 196px;
   overflow-y: auto;
   scrollbar-width: thin;
+  scrollbar-color: rgba(142, 197, 163, 0.62) rgba(255, 255, 255, 0.035);
+}
+
+.shortcut-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.shortcut-list::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.shortcut-list::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(17, 21, 19, 0.88);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(142, 197, 163, 0.92), rgba(215, 164, 75, 0.78));
+}
+
+.shortcut-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(142, 197, 163, 1), rgba(215, 164, 75, 0.95));
 }
 
 .shortcut-item {
@@ -794,6 +814,13 @@ a {
 .shortcut-text {
   display: block;
   min-width: 0;
+}
+
+.shortcut-text > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shortcut-icon {
