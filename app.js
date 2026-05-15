@@ -525,10 +525,10 @@ function renderLinks() {
               (item, itemIndex) => `
                 <li class="shortcut-item">
                   <a class="shortcut-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener">
+                    <img class="shortcut-icon" src="${escapeAttribute(getShortcutIconUrl(item.url))}" alt="" loading="lazy">
                     <span class="shortcut-text">
                       <span>${escapeHtml(item.label)}</span>
                     </span>
-                    <img class="shortcut-icon" src="${escapeAttribute(getShortcutIconUrl(item.url))}" alt="" loading="lazy">
                   </a>
                   <button class="shortcut-delete" type="button" data-delete-shortcut data-group-index="${groupIndex}" data-item-index="${itemIndex}" aria-label="${escapeAttribute(item.label)}を削除">削除</button>
                 </li>
