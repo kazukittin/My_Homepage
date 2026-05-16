@@ -186,6 +186,7 @@ const elements = {
   newsSourceLink: document.querySelector("#newsSourceLink"),
   calendarClientId: document.querySelector("#calendarClientId"),
   calendarApiKey: document.querySelector("#calendarApiKey"),
+  calendarBackendUrl: document.querySelector("#calendarBackendUrl"),
   calendarConfigEditToggle: document.querySelector("#calendarConfigEditToggle"),
   calendarAuthToggle: document.querySelector("#calendarAuthToggle"),
   calendarStatus: document.querySelector("#calendarStatus"),
@@ -648,6 +649,7 @@ function setupGoogleCalendar() {
   const config = loadCalendarConfig();
   elements.calendarClientId.value = config.clientId;
   elements.calendarApiKey.value = config.apiKey;
+  elements.calendarBackendUrl.value = config.backendUrl || "";
   elements.calendarOrigin.textContent = getOAuthOrigin();
   setCalendarConfigEditing(false);
   updateCalendarStatus();
@@ -662,6 +664,7 @@ function setupGoogleCalendar() {
     saveCalendarConfig({
       clientId: elements.calendarClientId.value.trim(),
       apiKey: elements.calendarApiKey.value.trim(),
+      backendUrl: normalizeBackendUrl(elements.calendarBackendUrl.value.trim()),
     });
     setCalendarConfigEditing(false);
     initializeGoogleCalendar();
@@ -749,9 +752,14 @@ function setupGoogleCalendar() {
 
 function loadCalendarConfig() {
   try {
-    return JSON.parse(localStorage.getItem(calendarConfigKey)) || { clientId: "", apiKey: "" };
+    return {
+      clientId: "",
+      apiKey: "",
+      backendUrl: "",
+      ...(JSON.parse(localStorage.getItem(calendarConfigKey)) || {}),
+    };
   } catch {
-    return { clientId: "", apiKey: "" };
+    return { clientId: "", apiKey: "", backendUrl: "" };
   }
 }
 
@@ -764,6 +772,7 @@ function setCalendarConfigEditing(isEditing) {
   elements.calendarConfigEditToggle.textContent = isEditing ? "設定を保存" : "設定を編集";
   elements.calendarClientId.readOnly = !isEditing;
   elements.calendarApiKey.readOnly = !isEditing;
+  elements.calendarBackendUrl.readOnly = !isEditing;
 }
 
 function saveCalendarConfig(config) {
@@ -775,6 +784,18 @@ function hasCalendarConfig() {
   return Boolean(config.clientId && config.apiKey);
 }
 
+function hasCalendarBackend() {
+  return Boolean(loadCalendarConfig().backendUrl);
+}
+
+function getCalendarBackendUrl() {
+  return loadCalendarConfig().backendUrl.replace(/\/+$/, "");
+}
+
+function normalizeBackendUrl(value) {
+  return value.replace(/\/+$/, "");
+}
+
 function getOAuthOrigin() {
   if (window.location.protocol === "file:" || window.location.origin === "null") {
     return "http://localhost:8000";
@@ -784,6 +805,11 @@ function getOAuthOrigin() {
 }
 
 function initializeGoogleCalendar() {
+  if (hasCalendarBackend()) {
+    checkBackendCalendarStatus();
+    return;
+  }
+
   if (!hasCalendarConfig()) {
     updateCalendarStatus("Client ID と API Key を保存すると連携できます。");
     return;
@@ -839,6 +865,11 @@ function setupTokenClient() {
 }
 
 function authorizeGoogleCalendar() {
+  if (hasCalendarBackend()) {
+    window.location.href = `${getCalendarBackendUrl()}/auth/google`;
+    return;
+  }
+
   if (!hasCalendarConfig()) {
     updateCalendarStatus("先に Client ID と API Key を保存してください。");
     return;
@@ -883,7 +914,58 @@ function renderCachedCalendarEvents() {
   updateCalendarStatus("前回取得した予定を表示中です。");
 }
 
+async function checkBackendCalendarStatus() {
+  try {
+    const status = await calendarBackendRequest("/auth/status");
+    calendarSignedIn = Boolean(status.authenticated);
+    updateCalendarAuthButton();
+    if (calendarSignedIn) {
+      updateCalendarStatus("バックエンド連携でログイン済みです。");
+      await listCalendarEvents();
+    } else {
+      updateCalendarStatus("バックエンド連携を使います。ログインすると長期ログインできます。");
+    }
+  } catch {
+    calendarSignedIn = false;
+    updateCalendarAuthButton();
+    updateCalendarStatus("バックエンドに接続できません。Backend URLを確認してください。");
+  }
+}
+
+async function calendarBackendRequest(path, options = {}) {
+  const response = await fetch(`${getCalendarBackendUrl()}${path}`, {
+    ...options,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Calendar backend error: ${response.status}`);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  return response.json();
+}
+
 function signoutGoogleCalendar() {
+  if (hasCalendarBackend()) {
+    calendarBackendRequest("/auth/logout", { method: "POST" }).catch(() => {});
+    localStorage.removeItem(calendarTokenKey);
+    calendarSignedIn = false;
+    updateCalendarAuthButton();
+    updateCalendarStatus("ログアウトしました。");
+    calendarEvents = [];
+    renderCalendarEvents([]);
+    renderMonthCalendar([]);
+    return;
+  }
+
   const token = typeof gapi === "undefined" ? null : gapi.client?.getToken?.();
   if (token) {
     google.accounts.oauth2.revoke(token.access_token);
@@ -909,6 +991,19 @@ async function listCalendarEvents() {
   }
 
   const fetchRange = getCalendarFetchRange();
+  if (hasCalendarBackend()) {
+    const params = new URLSearchParams({
+      timeMin: fetchRange.start.toISOString(),
+      timeMax: fetchRange.end.toISOString(),
+    });
+    const items = await calendarBackendRequest(`/api/calendar?${params.toString()}`);
+    calendarEvents = items || [];
+    saveCalendarEventsCache(calendarEvents);
+    renderCalendarEvents(getCurrentWeekEvents(calendarEvents));
+    renderMonthCalendar(calendarEvents);
+    return;
+  }
+
   const response = await gapi.client.calendar.events.list({
     calendarId: "primary",
     timeMin: fetchRange.start.toISOString(),
@@ -938,11 +1033,18 @@ async function saveCalendarEvent() {
   }
 
   if (elements.eventId.value) {
-    await gapi.client.calendar.events.update({
-      calendarId: "primary",
-      eventId: elements.eventId.value,
-      resource: event,
-    });
+    if (hasCalendarBackend()) {
+      await calendarBackendRequest(`/api/calendar/${encodeURIComponent(elements.eventId.value)}`, {
+        method: "PATCH",
+        body: JSON.stringify(event),
+      });
+    } else {
+      await gapi.client.calendar.events.update({
+        calendarId: "primary",
+        eventId: elements.eventId.value,
+        resource: event,
+      });
+    }
     updateCalendarStatus("予定を更新しました。");
   } else {
     await createCalendarEvent(event);
@@ -954,6 +1056,13 @@ async function saveCalendarEvent() {
 }
 
 async function createCalendarEvent(event) {
+  if (hasCalendarBackend()) {
+    return calendarBackendRequest("/api/calendar", {
+      method: "POST",
+      body: JSON.stringify(event),
+    });
+  }
+
   return gapi.client.calendar.events.insert({
     calendarId: "primary",
     resource: event,
@@ -965,10 +1074,14 @@ async function deleteCalendarEvent(eventId) {
     return;
   }
 
-  await gapi.client.calendar.events.delete({
-    calendarId: "primary",
-    eventId,
-  });
+  if (hasCalendarBackend()) {
+    await calendarBackendRequest(`/api/calendar/${encodeURIComponent(eventId)}`, { method: "DELETE" });
+  } else {
+    await gapi.client.calendar.events.delete({
+      calendarId: "primary",
+      eventId,
+    });
+  }
   updateCalendarStatus("予定を削除しました。");
   await listCalendarEvents();
 }
