@@ -1020,6 +1020,38 @@ async function listCalendarEvents() {
   renderMonthCalendar(calendarEvents);
 }
 
+function renderCalendarData() {
+  saveCalendarEventsCache(calendarEvents);
+  renderCalendarEvents(getCurrentWeekEvents(calendarEvents));
+  renderMonthCalendar(calendarEvents);
+}
+
+function applyLocalCalendarEvent(event) {
+  const index = calendarEvents.findIndex((item) => item.id === event.id);
+  if (index >= 0) {
+    calendarEvents[index] = { ...calendarEvents[index], ...event };
+  } else {
+    calendarEvents.push(event);
+  }
+
+  calendarEvents.sort((left, right) => getEventStartDate(left) - getEventStartDate(right));
+  renderCalendarData();
+}
+
+function createTemporaryCalendarEventId() {
+  if (window.crypto?.randomUUID) {
+    return `temporary-${window.crypto.randomUUID()}`;
+  }
+
+  return `temporary-${Date.now()}`;
+}
+
+function closeEventModal() {
+  if (elements.eventModal.open) {
+    elements.eventModal.close();
+  }
+}
+
 async function saveCalendarEvent() {
   if (!calendarSignedIn) {
     updateCalendarStatus("予定を保存するにはログインしてください。");
@@ -1031,6 +1063,41 @@ async function saveCalendarEvent() {
     updateCalendarStatus("予定名、開始、終了を入力してください。");
     return;
   }
+
+  const eventId = elements.eventId.value;
+  const previousEvents = structuredClone(calendarEvents);
+  applyLocalCalendarEvent({ ...event, id: eventId || createTemporaryCalendarEventId() });
+  closeEventModal();
+  resetEventForm();
+  updateCalendarStatus("予定を保存しています...");
+
+  try {
+    if (eventId) {
+      if (hasCalendarBackend()) {
+        await calendarBackendRequest(`/api/calendar/${encodeURIComponent(eventId)}`, {
+          method: "PATCH",
+          body: JSON.stringify(event),
+        });
+      } else {
+        await gapi.client.calendar.events.update({
+          calendarId: "primary",
+          eventId,
+          resource: event,
+        });
+      }
+      updateCalendarStatus("予定を更新しました。");
+    } else {
+      await createCalendarEvent(event);
+      updateCalendarStatus("予定を追加しました。");
+    }
+
+    await listCalendarEvents();
+  } catch {
+    calendarEvents = previousEvents;
+    renderCalendarData();
+    updateCalendarStatus("予定を保存できませんでした。接続やログイン状態を確認してください。");
+  }
+  return;
 
   if (elements.eventId.value) {
     if (hasCalendarBackend()) {
@@ -1251,6 +1318,22 @@ async function saveQuickShift(title, startTime, endTime, endDateOffset) {
   if (eventType.colorId) {
     event.colorId = eventType.colorId;
   }
+
+  const previousEvents = structuredClone(calendarEvents);
+  applyLocalCalendarEvent({ ...event, id: createTemporaryCalendarEventId() });
+  closeEventModal();
+  updateCalendarStatus("勤務予定を保存しています...");
+
+  try {
+    await createCalendarEvent(event);
+    updateCalendarStatus(`${title}を登録しました。`);
+    await listCalendarEvents();
+  } catch {
+    calendarEvents = previousEvents;
+    renderCalendarData();
+    updateCalendarStatus("勤務予定を保存できませんでした。接続やログイン状態を確認してください。");
+  }
+  return;
 
   await createCalendarEvent(event);
 
