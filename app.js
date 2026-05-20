@@ -213,6 +213,10 @@ const elements = {
   backgroundImageUrl: document.querySelector("#backgroundImageUrl"),
   saveBackgroundSettings: document.querySelector("#saveBackgroundSettings"),
   resetBackgroundSettings: document.querySelector("#resetBackgroundSettings"),
+  exportShortcuts: document.querySelector("#exportShortcuts"),
+  importShortcuts: document.querySelector("#importShortcuts"),
+  shortcutImportFile: document.querySelector("#shortcutImportFile"),
+  shortcutImportStatus: document.querySelector("#shortcutImportStatus"),
 };
 
 function setupSidebar() {
@@ -419,6 +423,16 @@ function setupShortcuts() {
   renderCategoryManager();
 }
 
+function setupShortcutImportExport() {
+  elements.exportShortcuts.addEventListener("click", exportShortcutGroups);
+
+  elements.importShortcuts.addEventListener("click", () => {
+    elements.shortcutImportFile.click();
+  });
+
+  elements.shortcutImportFile.addEventListener("change", importShortcutGroups);
+}
+
 function setShortcutEditMode(isEditing) {
   elements.linksCard.classList.toggle("is-editing", isEditing);
   elements.shortcutEditToggle.textContent = isEditing ? "完了" : "編集";
@@ -564,6 +578,52 @@ function loadShortcutGroups() {
 
 function saveShortcutGroups() {
   localStorage.setItem(shortcutsKey, JSON.stringify(shortcutGroups));
+}
+
+function exportShortcutGroups() {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    shortcuts: shortcutGroups,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `shortcuts-${toDateInputValue(new Date())}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+  elements.shortcutImportStatus.textContent = "ショートカットをエクスポートしました。";
+}
+
+function importShortcutGroups() {
+  const file = elements.shortcutImportFile.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || ""));
+      const importedGroups = Array.isArray(parsed) ? parsed : parsed.shortcuts;
+      if (!isValidShortcutGroups(importedGroups)) {
+        throw new Error("Invalid shortcut file.");
+      }
+
+      shortcutGroups = importedGroups;
+      saveShortcutGroups();
+      renderCategoryOptions();
+      renderCategoryManager();
+      renderLinks();
+      elements.shortcutImportStatus.textContent = "ショートカットをインポートしました。";
+    } catch {
+      elements.shortcutImportStatus.textContent = "インポートできませんでした。JSONファイルを確認してください。";
+    } finally {
+      elements.shortcutImportFile.value = "";
+    }
+  });
+  reader.readAsText(file);
 }
 
 function isValidShortcutGroups(groups) {
@@ -1878,6 +1938,7 @@ updateClock();
 setupSearch();
 setupMiniMemo();
 setupShortcuts();
+setupShortcutImportExport();
 setupBackgroundSettings();
 setupGoogleCalendar();
 loadWeather();

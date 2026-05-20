@@ -205,6 +205,16 @@
               </div>
               <p class="calendar-help">画像URLを空にすると、プリセットの背景だけを使います。</p>
             </section>
+            <section class="settings-card" aria-label="ショートカットのエクスポートとインポート">
+              <p class="eyebrow">ショートカット</p>
+              <h2>バックアップ</h2>
+              <div class="settings-actions">
+                <button id="exportShortcuts" type="button">エクスポート</button>
+                <button id="importShortcuts" type="button">インポート</button>
+              </div>
+              <input class="sr-only" id="shortcutImportFile" type="file" accept="application/json,.json">
+              <p class="calendar-help" id="shortcutImportStatus">カテゴリとリンクをJSONで保存・復元できます。</p>
+            </section>
           </div>
         </section>
       </main>
