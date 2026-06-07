@@ -1115,6 +1115,7 @@ async function listCalendarEvents() {
     const params = new URLSearchParams({
       timeMin: fetchRange.start.toISOString(),
       timeMax: fetchRange.end.toISOString(),
+      cacheBust: String(Date.now()),
     });
     const items = await calendarBackendRequest(`/api/calendar?${params.toString()}`);
     calendarEvents = items || [];

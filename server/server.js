@@ -92,16 +92,27 @@ app.post("/auth/logout", (_request, response) => {
 app.get("/api/calendar", async (request, response, next) => {
   try {
     const calendar = getCalendarClient(request);
-    const result = await calendar.events.list({
-      calendarId: "primary",
-      timeMin: String(request.query.timeMin || new Date().toISOString()),
-      timeMax: String(request.query.timeMax || getDefaultTimeMax()),
-      showDeleted: false,
-      singleEvents: true,
-      maxResults: 100,
-      orderBy: "startTime",
-    });
-    response.json(result.data.items || []);
+    const timeMin = String(request.query.timeMin || new Date().toISOString());
+    const timeMax = String(request.query.timeMax || getDefaultTimeMax());
+    const items = [];
+    let pageToken;
+
+    do {
+      const result = await calendar.events.list({
+        calendarId: "primary",
+        timeMin,
+        timeMax,
+        showDeleted: false,
+        singleEvents: true,
+        maxResults: 250,
+        orderBy: "startTime",
+        pageToken,
+      });
+      items.push(...(result.data.items || []));
+      pageToken = result.data.nextPageToken;
+    } while (pageToken);
+
+    response.json(items);
   } catch (error) {
     next(error);
   }
