@@ -674,6 +674,10 @@ a {
   display: none;
 }
 
+.links-card:not(.is-editing) .shortcut-move {
+  display: none;
+}
+
 .links-card:not(.is-editing) .shortcut-item {
   grid-template-columns: 1fr;
 }
@@ -814,7 +818,7 @@ a {
 
 .shortcut-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 54px;
+  grid-template-columns: minmax(0, 1fr) 112px 54px;
   gap: 6px;
   align-items: stretch;
 }
@@ -861,6 +865,23 @@ a {
   cursor: pointer;
   font-size: 12px;
   font-weight: 750;
+}
+
+.shortcut-move {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.shortcut-move:hover,
+.shortcut-move:focus-visible {
+  border-color: rgba(142, 197, 163, 0.5);
+  outline: none;
 }
 
 .shortcut-delete:hover,
@@ -1574,6 +1595,10 @@ a {
   }
 
   .quick-shift-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .links-card.is-editing .shortcut-item {
     grid-template-columns: 1fr;
   }
 }

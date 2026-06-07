@@ -420,6 +420,19 @@ function setupShortcuts() {
     renderLinks();
   });
 
+  elements.linkGroups.addEventListener("change", (event) => {
+    const moveSelect = event.target.closest("[data-move-shortcut]");
+    if (!moveSelect) {
+      return;
+    }
+
+    moveShortcutItem(
+      Number(moveSelect.dataset.groupIndex),
+      Number(moveSelect.dataset.itemIndex),
+      Number(moveSelect.value)
+    );
+  });
+
   renderCategoryManager();
 }
 
@@ -531,9 +544,31 @@ function deleteShortcutCategory(groupIndex) {
   renderLinks();
 }
 
+function moveShortcutItem(groupIndex, itemIndex, targetGroupIndex) {
+  if (
+    !shortcutGroups[groupIndex]?.items[itemIndex] ||
+    !shortcutGroups[targetGroupIndex] ||
+    groupIndex === targetGroupIndex
+  ) {
+    renderLinks();
+    return;
+  }
+
+  const [item] = shortcutGroups[groupIndex].items.splice(itemIndex, 1);
+  shortcutGroups[targetGroupIndex].items.push(item);
+  saveShortcutGroups();
+  renderLinks();
+}
+
 function renderLinks() {
   elements.linkGroups.innerHTML = shortcutGroups
     .map((group, groupIndex) => {
+      const categoryOptions = shortcutGroups
+        .map(
+          (targetGroup, targetIndex) =>
+            `<option value="${targetIndex}" ${targetIndex === groupIndex ? "selected" : ""}>${escapeHtml(targetGroup.category)}</option>`
+        )
+        .join("");
       const items = group.items.length
         ? group.items
             .map(
@@ -545,6 +580,9 @@ function renderLinks() {
                       <span>${escapeHtml(item.label)}</span>
                     </span>
                   </a>
+                  <select class="shortcut-move" data-move-shortcut data-group-index="${groupIndex}" data-item-index="${itemIndex}" aria-label="${escapeAttribute(item.label)}の移動先">
+                    ${categoryOptions}
+                  </select>
                   <button class="shortcut-delete" type="button" data-delete-shortcut data-group-index="${groupIndex}" data-item-index="${itemIndex}" aria-label="${escapeAttribute(item.label)}を削除">削除</button>
                 </li>
               `
