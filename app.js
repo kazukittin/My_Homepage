@@ -183,6 +183,7 @@ const elements = {
   newsTabs: document.querySelector("#newsTabs"),
   featuredNews: document.querySelector("#featuredNews"),
   newsList: document.querySelector("#newsList"),
+  newsInsights: document.querySelector("#newsInsights"),
   newsSourceLink: document.querySelector("#newsSourceLink"),
   calendarClientId: document.querySelector("#calendarClientId"),
   calendarApiKey: document.querySelector("#calendarApiKey"),
@@ -1847,6 +1848,7 @@ async function loadNewsCategory(categoryId) {
   } else {
     elements.featuredNews.innerHTML = "";
     elements.newsList.innerHTML = '<p class="feed-message">ニュースを読み込み中...</p>';
+    elements.newsInsights.innerHTML = '<p class="feed-message">ニュースを整理中...</p>';
   }
 
   elements.newsTabs.querySelectorAll(".news-tab").forEach((button) => {
@@ -1867,6 +1869,7 @@ async function loadNewsCategory(categoryId) {
     if (!cached) {
       elements.featuredNews.innerHTML = "";
       elements.newsList.innerHTML = '<p class="feed-message">ニュースを取得できません</p>';
+      elements.newsInsights.innerHTML = '<p class="feed-message">ニュースを整理できません</p>';
     }
     console.warn(error);
   }
@@ -1876,6 +1879,7 @@ function renderNewsFeed(items) {
   const [featured, ...rest] = items;
   elements.featuredNews.innerHTML = renderFeaturedNews(featured);
   elements.newsList.innerHTML = rest.map(renderNewsItem).join("");
+  elements.newsInsights.innerHTML = renderNewsInsights(items);
 }
 
 function renderFeaturedNews(item) {
@@ -1980,6 +1984,98 @@ function renderNewsItem(item) {
       </span>
     </a>
   `;
+}
+
+function renderNewsInsights(items) {
+  const latestDate = getLatestNewsDate(items);
+  const sourceStats = getNewsSourceStats(items).slice(0, 5);
+  const keywords = getNewsKeywords(items).slice(0, 12);
+
+  return `
+    <section class="news-insight-card">
+      <div>
+        <p class="eyebrow">更新状況</p>
+        <strong>${escapeHtml(`${items.length}件`)}</strong>
+      </div>
+      <span>${escapeHtml(latestDate ? `${formatNewsDate(latestDate.toISOString())} 更新` : "更新時刻なし")}</span>
+    </section>
+    <section class="news-insight-card">
+      <div>
+        <p class="eyebrow">ソース</p>
+        <strong>${sourceStats.length}媒体</strong>
+      </div>
+      <div class="news-source-bars">
+        ${sourceStats
+          .map(
+            (source) => `
+              <div class="news-source-bar">
+                <span>${escapeHtml(source.name)}</span>
+                <strong>${source.count}</strong>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    </section>
+    <section class="news-insight-card">
+      <div>
+        <p class="eyebrow">注目ワード</p>
+        <strong>見出しから抽出</strong>
+      </div>
+      <div class="news-keywords">
+        ${keywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join("") || "<span>まだありません</span>"}
+      </div>
+    </section>
+  `;
+}
+
+function getLatestNewsDate(items) {
+  return items
+    .map((item) => new Date(item.publishedAt))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((left, right) => right - left)[0];
+}
+
+function getNewsSourceStats(items) {
+  const counts = new Map();
+  items.forEach((item) => {
+    const source = item.source || "不明";
+    counts.set(source, (counts.get(source) || 0) + 1);
+  });
+
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((left, right) => right.count - left.count || left.name.localeCompare(right.name, "ja"));
+}
+
+function getNewsKeywords(items) {
+  const ignoreWords = new Set([
+    "ニュース",
+    "Google",
+    "Yahoo",
+    "する",
+    "した",
+    "いる",
+    "から",
+    "まで",
+    "について",
+    "これ",
+    "それ",
+  ]);
+  const counts = new Map();
+
+  items.forEach((item) => {
+    cleanNewsTitle(item.title)
+      .replace(/[!-\/:-@[-`{-~、。・「」『』【】（）()［］\[\]0-9０-９]/g, " ")
+      .split(/\s+/)
+      .map((word) => word.trim())
+      .filter((word) => word.length >= 2 && !ignoreWords.has(word))
+      .forEach((word) => counts.set(word, (counts.get(word) || 0) + 1));
+  });
+
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || right[0].length - left[0].length)
+    .map(([word]) => word);
 }
 
 async function fetchWithTimeout(url, timeout) {
