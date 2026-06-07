@@ -265,6 +265,28 @@ function showPage(pageName) {
     button.classList.toggle("is-active", isActive);
     button.setAttribute("aria-current", isActive ? "page" : "false");
   });
+
+  if (pageName === "calendar") {
+    refreshCalendarPage();
+  }
+}
+
+async function refreshCalendarPage() {
+  try {
+    if (hasCalendarBackend()) {
+      await checkBackendCalendarStatus();
+      return;
+    }
+
+    if (calendarSignedIn) {
+      await listCalendarEvents();
+      return;
+    }
+
+    renderCachedCalendarEvents();
+  } catch {
+    updateCalendarStatus("予定を更新できませんでした。接続やログイン状態を確認してください。");
+  }
 }
 
 function updateClock() {
