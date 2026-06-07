@@ -24,7 +24,7 @@ const CONFIG = {
   },
   calendar: {
     discoveryDoc: "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest",
-    scopes: "https://www.googleapis.com/auth/calendar.events",
+    scopes: "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
   },
   links: [
     {
@@ -93,7 +93,6 @@ const CALENDAR_EVENT_TYPES = [
   { keyword: "テスト", className: "is-test-event", colorId: "3" },
   { keyword: "その他", className: "is-other-event", colorId: "8" },
 ];
-
 const CALENDAR_COLOR_CLASS_MAP = {
   3: "is-test-event",
   6: "is-play-event",
@@ -984,7 +983,7 @@ function setupTokenClient() {
       localStorage.setItem(calendarConsentKey, "true");
       saveCalendarToken(response);
       updateCalendarAuthButton();
-      updateCalendarStatus("ログイン済み。予定を編集できます。");
+      updateCalendarStatus("ログイン済みです。予定を編集できます。");
       await listCalendarEvents();
     },
   });
@@ -1002,7 +1001,7 @@ function authorizeGoogleCalendar() {
   }
 
   if (!tokenClient) {
-    updateCalendarStatus("Google APIを読み込み中です。少し待ってから再度ログインしてください。");
+    updateCalendarStatus("Google APIを読み込み中です。少し待ってからもう一度ログインしてください。");
     initializeGoogleCalendar();
     return;
   }
@@ -1194,8 +1193,13 @@ async function saveCalendarEvent() {
   }
 
   const eventId = elements.eventId.value;
+  const calendarId = elements.eventId.dataset.calendarId || "primary";
   const previousEvents = structuredClone(calendarEvents);
-  applyLocalCalendarEvent({ ...event, id: eventId || createTemporaryCalendarEventId() });
+  applyLocalCalendarEvent({
+    ...event,
+    id: eventId || createTemporaryCalendarEventId(),
+    _calendarId: calendarId,
+  });
   closeEventModal();
   resetEventForm();
   updateCalendarStatus("予定を保存しています...");
@@ -1203,13 +1207,14 @@ async function saveCalendarEvent() {
   try {
     if (eventId) {
       if (hasCalendarBackend()) {
-        await calendarBackendRequest(`/api/calendar/${encodeURIComponent(eventId)}`, {
+        const params = new URLSearchParams({ calendarId });
+        await calendarBackendRequest(`/api/calendar/${encodeURIComponent(eventId)}?${params.toString()}`, {
           method: "PATCH",
           body: JSON.stringify(event),
         });
       } else {
         await gapi.client.calendar.events.update({
-          calendarId: "primary",
+          calendarId,
           eventId,
           resource: event,
         });
@@ -1226,29 +1231,6 @@ async function saveCalendarEvent() {
     renderCalendarData();
     updateCalendarStatus("予定を保存できませんでした。接続やログイン状態を確認してください。");
   }
-  return;
-
-  if (elements.eventId.value) {
-    if (hasCalendarBackend()) {
-      await calendarBackendRequest(`/api/calendar/${encodeURIComponent(elements.eventId.value)}`, {
-        method: "PATCH",
-        body: JSON.stringify(event),
-      });
-    } else {
-      await gapi.client.calendar.events.update({
-        calendarId: "primary",
-        eventId: elements.eventId.value,
-        resource: event,
-      });
-    }
-    updateCalendarStatus("予定を更新しました。");
-  } else {
-    await createCalendarEvent(event);
-    updateCalendarStatus("予定を追加しました。");
-  }
-
-  resetEventForm();
-  await listCalendarEvents();
 }
 
 async function createCalendarEvent(event) {
@@ -1265,16 +1247,19 @@ async function createCalendarEvent(event) {
   });
 }
 
-async function deleteCalendarEvent(eventId) {
+async function deleteCalendarEvent(eventId, calendarId = "primary") {
   if (!calendarSignedIn || !eventId) {
     return;
   }
 
   if (hasCalendarBackend()) {
-    await calendarBackendRequest(`/api/calendar/${encodeURIComponent(eventId)}`, { method: "DELETE" });
+    const params = new URLSearchParams({ calendarId });
+    await calendarBackendRequest(`/api/calendar/${encodeURIComponent(eventId)}?${params.toString()}`, {
+      method: "DELETE",
+    });
   } else {
     await gapi.client.calendar.events.delete({
-      calendarId: "primary",
+      calendarId,
       eventId,
     });
   }
@@ -1309,48 +1294,13 @@ function buildCalendarEvent() {
 
 function renderCalendarEvents(events) {
   renderCalendarEventList(elements.calendarEventList, events, "予定はありません。");
-  return;
-
-  calendarEventMap.clear();
-  if (!events.length) {
-    elements.calendarEventList.innerHTML = '<p class="feed-message">予定はありません。</p>';
-    return;
-  }
-
-  elements.calendarEventList.innerHTML = events
-    .map((event) => {
-      const start = event.start?.dateTime || event.start?.date || "";
-      const eventData = {
-        id: event.id,
-        summary: event.summary || "",
-        description: event.description || "",
-        start,
-        end: event.end?.dateTime || event.end?.date || "",
-        colorId: event.colorId || "",
-      };
-      calendarEventMap.set(event.id, eventData);
-      const eventType = getCalendarEventType(event.summary || "", event.colorId);
-      return `
-        <article class="calendar-event ${eventType.className}">
-          <div>
-            <strong>${escapeHtml(event.summary || "無題")}</strong>
-            <span>${escapeHtml(formatCalendarDate(start))}</span>
-          </div>
-          <div class="calendar-event-actions">
-            <button type="button" data-edit-event data-event-id="${escapeAttribute(event.id)}">編集</button>
-            <button type="button" data-delete-event data-event-id="${escapeAttribute(event.id)}">削除</button>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
 }
-
 function indexCalendarEvents(events) {
   calendarEventMap.clear();
   events.forEach((event) => {
     if (event.id) {
-      calendarEventMap.set(event.id, getCalendarEventData(event));
+      const eventData = getCalendarEventData(event);
+      calendarEventMap.set(getCalendarEventKey(eventData), eventData);
     }
   });
 }
@@ -1364,23 +1314,24 @@ function renderCalendarEventList(container, events, emptyMessage) {
   container.innerHTML = events
     .map((event) => {
       const eventData = getCalendarEventData(event);
+      const eventKey = getCalendarEventKey(eventData);
       const eventType = getCalendarEventType(event.summary || "", event.colorId);
       return `
         <article class="calendar-event ${eventType.className}">
           <div>
             <strong>${escapeHtml(event.summary || "無題")}</strong>
             <span>${escapeHtml(formatCalendarDate(eventData.start))}</span>
+            ${eventData.calendarSummary ? `<span class="calendar-source">${escapeHtml(eventData.calendarSummary)}</span>` : ""}
           </div>
           <div class="calendar-event-actions">
-            <button type="button" data-edit-event data-event-id="${escapeAttribute(event.id)}">編集</button>
-            <button type="button" data-delete-event data-event-id="${escapeAttribute(event.id)}">削除</button>
+            <button type="button" data-edit-event data-event-key="${escapeAttribute(eventKey)}">編集</button>
+            <button type="button" data-delete-event data-event-key="${escapeAttribute(eventKey)}">削除</button>
           </div>
         </article>
       `;
     })
     .join("");
 }
-
 function getCalendarEventData(event) {
   return {
     id: event.id,
@@ -1389,43 +1340,13 @@ function getCalendarEventData(event) {
     start: event.start?.dateTime || event.start?.date || "",
     end: event.end?.dateTime || event.end?.date || "",
     colorId: event.colorId || "",
+    calendarId: event._calendarId || event.calendarId || "primary",
+    calendarSummary: event._calendarSummary || event.calendarSummary || "",
   };
 }
 
-function renderMonthCalendar(events) {
-  const year = calendarVisibleMonth.getFullYear();
-  const month = calendarVisibleMonth.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const startDate = new Date(year, month, 1 - firstDay.getDay());
-
-  elements.monthCalendarLabel.textContent = new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "long",
-  }).format(calendarVisibleMonth);
-
-  elements.monthGrid.innerHTML = Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(startDate);
-    date.setDate(startDate.getDate() + index);
-    const isCurrentMonth = date.getMonth() === month;
-    const isToday = date.toDateString() === new Date().toDateString();
-    const allDayEvents = events.filter((event) => eventOccursOnDate(event, date));
-    const dayEvents = allDayEvents.slice(0, 3);
-    const dayType = getDominantCalendarEventType(allDayEvents);
-
-    return `
-      <button class="month-day ${dayType.className}${isCurrentMonth ? "" : " is-muted"}${isToday ? " is-today" : ""}" type="button" data-calendar-date="${toDateInputValue(date)}">
-        <span class="month-day-number">${date.getDate()}</span>
-        <span class="month-day-events">
-          ${dayEvents
-            .map((event) => {
-              const eventType = getCalendarEventType(event.summary || "", event.colorId);
-              return `<span class="${eventType.className}">${escapeHtml(event.summary || "無題")}</span>`;
-            })
-            .join("")}
-        </span>
-      </button>
-    `;
-  }).join("");
+function getCalendarEventKey(event) {
+  return `${event.calendarId || "primary"}::${event.id}`;
 }
 
 function renderMonthCalendar(events) {
@@ -1509,13 +1430,16 @@ function handleCalendarEventAction(event) {
   const editButton = event.target.closest("[data-edit-event]");
   const deleteButton = event.target.closest("[data-delete-event]");
   if (editButton) {
-    const eventData = calendarEventMap.get(editButton.dataset.eventId);
+    const eventData = calendarEventMap.get(editButton.dataset.eventKey);
     if (eventData) {
       fillEventForm(eventData);
     }
   }
   if (deleteButton) {
-    deleteCalendarEvent(deleteButton.dataset.eventId);
+    const eventData = calendarEventMap.get(deleteButton.dataset.eventKey);
+    if (eventData) {
+      deleteCalendarEvent(eventData.id, eventData.calendarId);
+    }
   }
 }
 
@@ -1602,13 +1526,6 @@ async function saveQuickShift(title, startTime, endTime, endDateOffset) {
     renderCalendarData();
     updateCalendarStatus("勤務予定を保存できませんでした。接続やログイン状態を確認してください。");
   }
-  return;
-
-  await createCalendarEvent(event);
-
-  updateCalendarStatus(`${title}を登録しました。`);
-  elements.eventModal.close();
-  await listCalendarEvents();
 }
 
 function getEventStartDate(event) {
@@ -1667,6 +1584,7 @@ function getCurrentWeekEvents(events) {
 
 function fillEventForm(event) {
   elements.eventId.value = event.id;
+  elements.eventId.dataset.calendarId = event.calendarId || "primary";
   elements.eventTitle.value = event.summary;
   elements.eventDescription.value = event.description;
   elements.eventStart.value = toDateTimeLocal(event.start);
@@ -1679,6 +1597,7 @@ function fillEventForm(event) {
 function resetEventForm() {
   elements.eventForm.reset();
   elements.eventId.value = "";
+  delete elements.eventId.dataset.calendarId;
   elements.eventBaseDate.value = "";
   elements.eventModalTitle.textContent = "予定を追加";
 }

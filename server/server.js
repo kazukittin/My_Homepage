@@ -15,7 +15,10 @@ const {
   COOKIE_SECRET,
 } = process.env;
 
-const SCOPES = ["https://www.googleapis.com/auth/calendar.events"];
+const SCOPES = [
+  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/calendar.readonly",
+];
 const COOKIE_NAME = "calendar_session";
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -45,6 +48,14 @@ const oauth2Client = new google.auth.OAuth2(
 
 app.get("/health", (_request, response) => {
   response.json({ ok: true });
+});
+
+app.get("/", (_request, response) => {
+  response.json({
+    ok: true,
+    service: "my-homepage-calendar-backend",
+    endpoints: ["/health", "/auth/google", "/auth/status", "/api/calendar"],
+  });
 });
 
 app.get("/auth/google", (_request, response) => {
@@ -94,23 +105,11 @@ app.get("/api/calendar", async (request, response, next) => {
     const calendar = getCalendarClient(request);
     const timeMin = String(request.query.timeMin || new Date().toISOString());
     const timeMax = String(request.query.timeMax || getDefaultTimeMax());
-    const items = [];
-    let pageToken;
-
-    do {
-      const result = await calendar.events.list({
-        calendarId: "primary",
-        timeMin,
-        timeMax,
-        showDeleted: false,
-        singleEvents: true,
-        maxResults: 250,
-        orderBy: "startTime",
-        pageToken,
-      });
-      items.push(...(result.data.items || []));
-      pageToken = result.data.nextPageToken;
-    } while (pageToken);
+    const calendarSources = await listCalendarSources(calendar);
+    const eventGroups = await Promise.all(
+      calendarSources.map((calendarSource) => listEventsForCalendar(calendar, calendarSource, timeMin, timeMax))
+    );
+    const items = eventGroups.flat().sort((left, right) => getEventSortValue(left) - getEventSortValue(right));
 
     response.json(items);
   } catch (error) {
@@ -134,8 +133,9 @@ app.post("/api/calendar", async (request, response, next) => {
 app.patch("/api/calendar/:eventId", async (request, response, next) => {
   try {
     const calendar = getCalendarClient(request);
+    const calendarId = getTargetCalendarId(request);
     const result = await calendar.events.update({
-      calendarId: "primary",
+      calendarId,
       eventId: request.params.eventId,
       requestBody: request.body,
     });
@@ -148,8 +148,9 @@ app.patch("/api/calendar/:eventId", async (request, response, next) => {
 app.delete("/api/calendar/:eventId", async (request, response, next) => {
   try {
     const calendar = getCalendarClient(request);
+    const calendarId = getTargetCalendarId(request);
     await calendar.events.delete({
-      calendarId: "primary",
+      calendarId,
       eventId: request.params.eventId,
     });
     response.status(204).end();
@@ -187,6 +188,61 @@ function getDefaultTimeMax() {
   const date = new Date();
   date.setMonth(date.getMonth() + 1);
   return date.toISOString();
+}
+
+async function listCalendarSources(calendar) {
+  const items = [];
+  let pageToken;
+
+  do {
+    const result = await calendar.calendarList.list({
+      minAccessRole: "reader",
+      pageToken,
+    });
+    items.push(...(result.data.items || []));
+    pageToken = result.data.nextPageToken;
+  } while (pageToken);
+
+  return items.length ? items : [{ id: "primary", summary: "Primary" }];
+}
+
+async function listEventsForCalendar(calendar, calendarSource, timeMin, timeMax) {
+  const items = [];
+  let pageToken;
+
+  do {
+    const result = await calendar.events.list({
+      calendarId: calendarSource.id,
+      timeMin,
+      timeMax,
+      showDeleted: false,
+      singleEvents: true,
+      maxResults: 250,
+      orderBy: "startTime",
+      pageToken,
+    });
+    items.push(
+      ...(result.data.items || []).map((event) => ({
+        ...event,
+        _calendarId: calendarSource.id,
+        _calendarSummary: calendarSource.summary || calendarSource.id,
+        _calendarAccessRole: calendarSource.accessRole || "",
+      }))
+    );
+    pageToken = result.data.nextPageToken;
+  } while (pageToken);
+
+  return items;
+}
+
+function getEventSortValue(event) {
+  const value = event.start?.dateTime || event.start?.date || "";
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function getTargetCalendarId(request) {
+  return String(request.query.calendarId || request.body?.calendarId || "primary");
 }
 
 function readSession(request) {
