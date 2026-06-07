@@ -1840,7 +1840,7 @@ function renderNewsTabs() {
 async function loadNewsCategory(categoryId) {
   const category = CONFIG.news.categories.find((item) => item.id === categoryId) || CONFIG.news.categories[0];
   localStorage.setItem(newsCategoryKey, category.id);
-  elements.newsSourceLink.href = category.feedUrl;
+  elements.newsSourceLink.href = "https://news.google.com/home?hl=ja&gl=JP&ceid=JP:ja";
   const cached = loadNewsCache(category.id);
 
   if (cached) {
