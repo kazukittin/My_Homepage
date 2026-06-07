@@ -154,12 +154,31 @@
                 <div class="month-grid" id="monthGrid"></div>
               </section>
               <div class="calendar-side-panel">
+                <div class="selected-day-panel">
+                  <div class="side-heading">
+                    <p class="eyebrow">選択日</p>
+                    <h2 id="selectedDayLabel">日付を選択</h2>
+                  </div>
+                  <button class="section-action selected-day-add" id="addSelectedDayEvent" type="button">予定を追加</button>
+                  <div class="calendar-event-list compact" id="selectedDayEventList">
+                    <p class="feed-message">日付を選ぶと予定を表示します。</p>
+                  </div>
+                </div>
                 <div class="side-heading">
                   <p class="eyebrow">予定</p>
                   <h2>今週の予定</h2>
                 </div>
                 <div class="calendar-event-list" id="calendarEventList">
                   <p class="feed-message">Googleカレンダーにログインすると予定を表示します。</p>
+                </div>
+                <div class="month-events-panel">
+                  <div class="side-heading">
+                    <p class="eyebrow">月内</p>
+                    <h2 id="monthEventListLabel">表示中の月の予定</h2>
+                  </div>
+                  <div class="calendar-event-list month-event-list" id="monthEventList">
+                    <p class="feed-message">予定はありません。</p>
+                  </div>
                 </div>
               </div>
           </div>

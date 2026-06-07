@@ -146,6 +146,7 @@ let gisReady = false;
 let calendarSignedIn = false;
 let calendarVisibleMonth = new Date();
 let calendarEvents = [];
+let selectedCalendarDate = "";
 let silentCalendarAuthTried = false;
 const calendarEventMap = new Map();
 
@@ -205,6 +206,11 @@ const elements = {
   addNightShift: document.querySelector("#addNightShift"),
   cancelEventEdit: document.querySelector("#cancelEventEdit"),
   calendarEventList: document.querySelector("#calendarEventList"),
+  selectedDayLabel: document.querySelector("#selectedDayLabel"),
+  selectedDayEventList: document.querySelector("#selectedDayEventList"),
+  addSelectedDayEvent: document.querySelector("#addSelectedDayEvent"),
+  monthEventList: document.querySelector("#monthEventList"),
+  monthEventListLabel: document.querySelector("#monthEventListLabel"),
   prevMonth: document.querySelector("#prevMonth"),
   nextMonth: document.querySelector("#nextMonth"),
   monthCalendarLabel: document.querySelector("#monthCalendarLabel"),
@@ -826,22 +832,17 @@ function setupGoogleCalendar() {
     }
   });
 
-  elements.calendarEventList.addEventListener("click", (event) => {
-    const editButton = event.target.closest("[data-edit-event]");
-    const deleteButton = event.target.closest("[data-delete-event]");
-    if (editButton) {
-      const eventData = calendarEventMap.get(editButton.dataset.eventId);
-      if (eventData) {
-        fillEventForm(eventData);
-      }
-    }
-    if (deleteButton) {
-      deleteCalendarEvent(deleteButton.dataset.eventId);
-    }
+  [elements.calendarEventList, elements.selectedDayEventList, elements.monthEventList].forEach((list) => {
+    list.addEventListener("click", handleCalendarEventAction);
+  });
+
+  elements.addSelectedDayEvent.addEventListener("click", () => {
+    openEventModalForDate(selectedCalendarDate || toDateInputValue(new Date()));
   });
 
   elements.prevMonth.addEventListener("click", () => {
     calendarVisibleMonth = new Date(calendarVisibleMonth.getFullYear(), calendarVisibleMonth.getMonth() - 1, 1);
+    selectedCalendarDate = toDateInputValue(calendarVisibleMonth);
     if (calendarSignedIn) {
       listCalendarEvents();
     } else {
@@ -851,6 +852,7 @@ function setupGoogleCalendar() {
 
   elements.nextMonth.addEventListener("click", () => {
     calendarVisibleMonth = new Date(calendarVisibleMonth.getFullYear(), calendarVisibleMonth.getMonth() + 1, 1);
+    selectedCalendarDate = toDateInputValue(calendarVisibleMonth);
     if (calendarSignedIn) {
       listCalendarEvents();
     } else {
@@ -863,11 +865,15 @@ function setupGoogleCalendar() {
     if (!day) {
       return;
     }
-    openEventModalForDate(day.dataset.calendarDate);
+    selectedCalendarDate = day.dataset.calendarDate;
+    renderMonthCalendar(calendarEvents);
+    renderSelectedDayEvents(calendarEvents);
   });
 
   initializeGoogleCalendar();
   renderMonthCalendar([]);
+  renderSelectedDayEvents([]);
+  renderVisibleMonthEvents([]);
 }
 
 function loadCalendarConfig() {
@@ -1029,8 +1035,7 @@ function renderCachedCalendarEvents() {
   }
 
   calendarEvents = cachedEvents;
-  renderCalendarEvents(getCurrentWeekEvents(calendarEvents));
-  renderMonthCalendar(calendarEvents);
+  renderCalendarData();
   updateCalendarStatus("前回取得した予定を表示中です。");
 }
 
@@ -1083,6 +1088,8 @@ function signoutGoogleCalendar() {
     calendarEvents = [];
     renderCalendarEvents([]);
     renderMonthCalendar([]);
+    renderSelectedDayEvents([]);
+    renderVisibleMonthEvents([]);
     return;
   }
 
@@ -1098,6 +1105,8 @@ function signoutGoogleCalendar() {
   calendarEvents = [];
   renderCalendarEvents([]);
   renderMonthCalendar([]);
+  renderSelectedDayEvents([]);
+  renderVisibleMonthEvents([]);
 }
 
 function updateCalendarAuthButton() {
@@ -1119,9 +1128,7 @@ async function listCalendarEvents() {
     });
     const items = await calendarBackendRequest(`/api/calendar?${params.toString()}`);
     calendarEvents = items || [];
-    saveCalendarEventsCache(calendarEvents);
-    renderCalendarEvents(getCurrentWeekEvents(calendarEvents));
-    renderMonthCalendar(calendarEvents);
+    renderCalendarData();
     return;
   }
 
@@ -1136,15 +1143,16 @@ async function listCalendarEvents() {
   });
 
   calendarEvents = response.result.items || [];
-  saveCalendarEventsCache(calendarEvents);
-  renderCalendarEvents(getCurrentWeekEvents(calendarEvents));
-  renderMonthCalendar(calendarEvents);
+  renderCalendarData();
 }
 
 function renderCalendarData() {
   saveCalendarEventsCache(calendarEvents);
+  indexCalendarEvents(calendarEvents);
   renderCalendarEvents(getCurrentWeekEvents(calendarEvents));
   renderMonthCalendar(calendarEvents);
+  renderSelectedDayEvents(calendarEvents);
+  renderVisibleMonthEvents(calendarEvents);
 }
 
 function applyLocalCalendarEvent(event) {
@@ -1300,6 +1308,9 @@ function buildCalendarEvent() {
 }
 
 function renderCalendarEvents(events) {
+  renderCalendarEventList(elements.calendarEventList, events, "予定はありません。");
+  return;
+
   calendarEventMap.clear();
   if (!events.length) {
     elements.calendarEventList.innerHTML = '<p class="feed-message">予定はありません。</p>';
@@ -1333,6 +1344,52 @@ function renderCalendarEvents(events) {
       `;
     })
     .join("");
+}
+
+function indexCalendarEvents(events) {
+  calendarEventMap.clear();
+  events.forEach((event) => {
+    if (event.id) {
+      calendarEventMap.set(event.id, getCalendarEventData(event));
+    }
+  });
+}
+
+function renderCalendarEventList(container, events, emptyMessage) {
+  if (!events.length) {
+    container.innerHTML = `<p class="feed-message">${emptyMessage}</p>`;
+    return;
+  }
+
+  container.innerHTML = events
+    .map((event) => {
+      const eventData = getCalendarEventData(event);
+      const eventType = getCalendarEventType(event.summary || "", event.colorId);
+      return `
+        <article class="calendar-event ${eventType.className}">
+          <div>
+            <strong>${escapeHtml(event.summary || "無題")}</strong>
+            <span>${escapeHtml(formatCalendarDate(eventData.start))}</span>
+          </div>
+          <div class="calendar-event-actions">
+            <button type="button" data-edit-event data-event-id="${escapeAttribute(event.id)}">編集</button>
+            <button type="button" data-delete-event data-event-id="${escapeAttribute(event.id)}">削除</button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function getCalendarEventData(event) {
+  return {
+    id: event.id,
+    summary: event.summary || "",
+    description: event.description || "",
+    start: event.start?.dateTime || event.start?.date || "",
+    end: event.end?.dateTime || event.end?.date || "",
+    colorId: event.colorId || "",
+  };
 }
 
 function renderMonthCalendar(events) {
@@ -1369,6 +1426,97 @@ function renderMonthCalendar(events) {
       </button>
     `;
   }).join("");
+}
+
+function renderMonthCalendar(events) {
+  if (!selectedCalendarDate) {
+    selectedCalendarDate = toDateInputValue(new Date());
+  }
+
+  const year = calendarVisibleMonth.getFullYear();
+  const month = calendarVisibleMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startDate = new Date(year, month, 1 - firstDay.getDay());
+
+  elements.monthCalendarLabel.textContent = new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "long",
+  }).format(calendarVisibleMonth);
+
+  elements.monthGrid.innerHTML = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + index);
+    const isCurrentMonth = date.getMonth() === month;
+    const isToday = date.toDateString() === new Date().toDateString();
+    const allDayEvents = events.filter((event) => eventOccursOnDate(event, date));
+    const dayType = getDominantCalendarEventType(allDayEvents);
+    const eventTypeDots = getEventTypeClasses(allDayEvents).slice(0, 5);
+    const dateText = toDateInputValue(date);
+
+    return `
+      <button class="month-day ${dayType.className}${isCurrentMonth ? "" : " is-muted"}${isToday ? " is-today" : ""}${dateText === selectedCalendarDate ? " is-selected" : ""}" type="button" data-calendar-date="${dateText}">
+        <span class="month-day-number">${date.getDate()}</span>
+        <span class="month-day-summary">
+          ${allDayEvents.length ? `<strong>${allDayEvents.length}件</strong>` : ""}
+          <span class="month-day-dots">
+            ${eventTypeDots.map((className) => `<i class="${className}" aria-hidden="true"></i>`).join("")}
+          </span>
+        </span>
+      </button>
+    `;
+  }).join("");
+}
+
+function getEventTypeClasses(events) {
+  return [...new Set(events.map((event) => getCalendarEventType(event.summary || "", event.colorId).className))];
+}
+
+function renderSelectedDayEvents(events) {
+  if (!selectedCalendarDate) {
+    selectedCalendarDate = toDateInputValue(new Date());
+  }
+
+  const selectedDate = parseDateInputAsLocal(selectedCalendarDate);
+  elements.selectedDayLabel.textContent = new Intl.DateTimeFormat("ja-JP", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(selectedDate);
+
+  renderCalendarEventList(
+    elements.selectedDayEventList,
+    events.filter((event) => eventOccursOnDate(event, selectedDate)),
+    "この日の予定はありません。"
+  );
+}
+
+function renderVisibleMonthEvents(events) {
+  const monthStart = new Date(calendarVisibleMonth.getFullYear(), calendarVisibleMonth.getMonth(), 1);
+  const monthEnd = new Date(calendarVisibleMonth.getFullYear(), calendarVisibleMonth.getMonth() + 1, 1);
+  elements.monthEventListLabel.textContent = new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "long",
+  }).format(calendarVisibleMonth);
+
+  renderCalendarEventList(
+    elements.monthEventList,
+    events.filter((event) => eventOccursInRange(event, monthStart, monthEnd)),
+    "この月の予定はありません。"
+  );
+}
+
+function handleCalendarEventAction(event) {
+  const editButton = event.target.closest("[data-edit-event]");
+  const deleteButton = event.target.closest("[data-delete-event]");
+  if (editButton) {
+    const eventData = calendarEventMap.get(editButton.dataset.eventId);
+    if (eventData) {
+      fillEventForm(eventData);
+    }
+  }
+  if (deleteButton) {
+    deleteCalendarEvent(deleteButton.dataset.eventId);
+  }
 }
 
 function getCalendarEventType(summary, colorId = "") {

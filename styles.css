@@ -1235,6 +1235,16 @@ a {
   gap: 12px;
 }
 
+.selected-day-panel,
+.month-events-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.selected-day-add {
+  width: 100%;
+}
+
 .side-heading h2 {
   margin: 0;
   font-size: 18px;
@@ -1302,6 +1312,11 @@ a {
   box-shadow: inset 0 0 0 2px rgba(245, 214, 122, 0.78);
 }
 
+.month-day.is-selected {
+  outline: 2px solid rgba(142, 197, 163, 0.85);
+  outline-offset: -3px;
+}
+
 .month-day-number {
   width: fit-content;
   min-width: 22px;
@@ -1317,6 +1332,39 @@ a {
   display: grid;
   gap: 3px;
 }
+
+.month-day-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.month-day-summary strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.month-day-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 4px;
+}
+
+.month-day-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.month-day-dots i.is-day-shift { background: #8ec5a3; }
+.month-day-dots i.is-night-shift { background: #8ab8ff; }
+.month-day-dots i.is-play-event { background: #d7a44b; }
+.month-day-dots i.is-test-event { background: #ae8cff; }
+.month-day-dots i.is-other-event { background: #9ba89f; }
 
 .month-day-events span {
   min-width: 0;
@@ -1485,6 +1533,19 @@ a {
 .calendar-event-list {
   display: grid;
   gap: 8px;
+}
+
+.calendar-event-list.compact,
+.month-event-list {
+  max-height: 230px;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(142, 197, 163, 0.62) rgba(255, 255, 255, 0.035);
+}
+
+.month-event-list {
+  max-height: 310px;
 }
 
 .calendar-event {
