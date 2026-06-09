@@ -1372,25 +1372,25 @@ function renderMonthCalendar(events) {
     const isToday = date.toDateString() === new Date().toDateString();
     const allDayEvents = events.filter((event) => eventOccursOnDate(event, date));
     const dayType = getDominantCalendarEventType(allDayEvents);
-    const eventTypeDots = getEventTypeClasses(allDayEvents).slice(0, 5);
+    const visibleEvents = allDayEvents.slice(0, 3);
+    const hiddenEventCount = Math.max(allDayEvents.length - visibleEvents.length, 0);
     const dateText = toDateInputValue(date);
 
     return `
       <button class="month-day ${dayType.className}${isCurrentMonth ? "" : " is-muted"}${isToday ? " is-today" : ""}${dateText === selectedCalendarDate ? " is-selected" : ""}" type="button" data-calendar-date="${dateText}">
         <span class="month-day-number">${date.getDate()}</span>
-        <span class="month-day-summary">
-          ${allDayEvents.length ? `<strong>${allDayEvents.length}件</strong>` : ""}
-          <span class="month-day-dots">
-            ${eventTypeDots.map((className) => `<i class="${className}" aria-hidden="true"></i>`).join("")}
-          </span>
+        <span class="month-day-events">
+          ${visibleEvents.map(renderMonthCalendarEventName).join("")}
+          ${hiddenEventCount ? `<span class="is-more-event">+${hiddenEventCount}</span>` : ""}
         </span>
       </button>
     `;
   }).join("");
 }
 
-function getEventTypeClasses(events) {
-  return [...new Set(events.map((event) => getCalendarEventType(event.summary || "", event.colorId).className))];
+function renderMonthCalendarEventName(event) {
+  const eventType = getCalendarEventType(event.summary || "", event.colorId);
+  return `<span class="${eventType.className}">${escapeHtml(event.summary || "無題")}</span>`;
 }
 
 function renderSelectedDayEvents(events) {
