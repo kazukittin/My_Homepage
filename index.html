@@ -26,12 +26,6 @@
             </span>
             <span class="nav-label">メイン画面</span>
           </button>
-          <button class="nav-link" type="button" data-page-target="news" title="ニュースフィード">
-            <span class="nav-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 5h13v14H4z"/><path d="M17 8h3v9a2 2 0 0 1-2 2h-1"/><path d="M7 9h7"/><path d="M7 13h7"/><path d="M7 17h4"/></svg>
-            </span>
-            <span class="nav-label">ニュースフィード</span>
-          </button>
         </nav>
 
         <div class="sidebar-footer">
@@ -98,34 +92,23 @@
               </div>
             </article>
 
-            <article class="mini-memo-card">
+            <article class="mini-news-card">
               <div class="card-heading">
                 <div>
-                  <p class="eyebrow">メモ</p>
-                  <h2>クイックメモ</h2>
+                  <p class="eyebrow">ニュース</p>
+                  <h2>ニュースフィード</h2>
                 </div>
-                <span id="miniMemoStatus">保存済み</span>
+                <a class="mini-news-link" id="newsSourceLink" href="https://news.google.com/" target="_blank" rel="noopener">開く</a>
               </div>
-              <textarea id="miniMemo" spellcheck="false" placeholder="短いメモ"></textarea>
+              <div class="news-tabs" id="newsTabs" role="tablist" aria-label="ニュースカテゴリ"></div>
+              <div class="news-list" id="newsList">
+                <p class="feed-message">ニュースを読み込み中...</p>
+              </div>
             </article>
             </div>
           </section>
         </section>
 
-        <section class="page" id="page-news" aria-labelledby="newsTitle" hidden>
-          <div class="page-heading">
-            <h1 id="newsTitle" class="sr-only">ニュースフィード</h1>
-            <a class="section-action" id="newsSourceLink" href="https://news.google.com/" target="_blank" rel="noopener">Googleニュースを開く</a>
-          </div>
-          <div class="news-tabs" id="newsTabs" role="tablist" aria-label="ニュースカテゴリ"></div>
-          <div class="featured-news" id="featuredNews"></div>
-          <div class="news-list" id="newsList">
-            <p class="feed-message">ニュースを読み込み中...</p>
-          </div>
-          <div class="news-insights" id="newsInsights" aria-label="ニュース整理">
-            <p class="feed-message">ニュースを整理中...</p>
-          </div>
-        </section>
         <section class="page" id="page-settings" aria-labelledby="settingsTitle" hidden>
           <div class="page-heading">
             <h1 id="settingsTitle" class="sr-only">設定</h1>

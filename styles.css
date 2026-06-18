@@ -313,7 +313,7 @@ a {
 
 .search-panel,
 .weather-card,
-.mini-memo-card,
+.mini-news-card,
 .links-card {
   padding: 14px;
   border: 1px solid var(--line);
@@ -484,40 +484,76 @@ a {
   font-size: 12px;
 }
 
-.mini-memo-card {
+.mini-news-card {
   display: grid;
-  gap: 10px;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+  height: 170px;
+  overflow: hidden;
 }
 
-.mini-memo-card .card-heading h2 {
+.mini-news-card .card-heading h2 {
   font-size: 16px;
 }
 
-#miniMemoStatus {
-  color: var(--muted);
+.mini-news-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid rgba(142, 197, 163, 0.35);
+  border-radius: 7px;
+  color: var(--accent);
+  background: rgba(142, 197, 163, 0.07);
   font-size: 12px;
+  font-weight: 750;
+}
+
+.mini-news-card .news-tabs {
+  gap: 5px;
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.mini-news-card .news-tab {
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.mini-news-card .news-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(142, 197, 163, 0.55) transparent;
+}
+
+.mini-news-card .news-item {
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 7px;
+}
+
+.mini-news-card .news-title {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-#miniMemoStatus.is-saving {
-  color: var(--accent-strong);
+.mini-news-card .news-meta {
+  font-size: 10px;
 }
 
-.mini-memo-card textarea {
-  width: 100%;
-  min-height: 92px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--text);
-  background: #111513;
-  resize: vertical;
-  outline: none;
-}
-
-.mini-memo-card textarea:focus {
-  border-color: rgba(142, 197, 163, 0.78);
-  box-shadow: 0 0 0 3px rgba(142, 197, 163, 0.12);
+.mini-news-card .feed-message {
+  padding: 9px;
+  font-size: 12px;
 }
 
 .weekly-weather-day.is-today {

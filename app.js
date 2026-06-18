@@ -88,7 +88,6 @@ const shortcutEditKey = "private-start.shortcutEditMode";
 const newsCategoryKey = "private-start.newsCategory";
 const newsCachePrefix = "private-start.newsCache.";
 const newsCacheMaxAge = 15 * 60 * 1000;
-const miniMemoKey = "private-start.miniMemo";
 const backgroundSettingsKey = "private-start.backgroundSettings";
 
 const BACKGROUND_PRESETS = {
@@ -145,12 +144,8 @@ const elements = {
   weatherFeels: document.querySelector("#weatherFeels"),
   weatherWind: document.querySelector("#weatherWind"),
   weeklyWeatherList: document.querySelector("#weeklyWeatherList"),
-  miniMemo: document.querySelector("#miniMemo"),
-  miniMemoStatus: document.querySelector("#miniMemoStatus"),
   newsTabs: document.querySelector("#newsTabs"),
-  featuredNews: document.querySelector("#featuredNews"),
   newsList: document.querySelector("#newsList"),
-  newsInsights: document.querySelector("#newsInsights"),
   newsSourceLink: document.querySelector("#newsSourceLink"),
   backgroundPreset: document.querySelector("#backgroundPreset"),
   backgroundImageUrl: document.querySelector("#backgroundImageUrl"),
@@ -242,23 +237,6 @@ function setupSearch() {
     const url = new URL(CONFIG.search.url);
     url.searchParams.set(CONFIG.search.queryParam, query);
     window.open(url.toString(), "_blank", "noopener");
-  });
-}
-
-function setupMiniMemo() {
-  elements.miniMemo.value = localStorage.getItem(miniMemoKey) || "";
-  let saveTimer;
-
-  elements.miniMemo.addEventListener("input", () => {
-    localStorage.setItem(miniMemoKey, elements.miniMemo.value);
-    elements.miniMemoStatus.textContent = "保存中...";
-    elements.miniMemoStatus.classList.add("is-saving");
-
-    window.clearTimeout(saveTimer);
-    saveTimer = window.setTimeout(() => {
-      elements.miniMemoStatus.textContent = "保存済み";
-      elements.miniMemoStatus.classList.remove("is-saving");
-    }, 500);
   });
 }
 
@@ -789,9 +767,7 @@ async function loadNewsCategory(categoryId) {
   if (cached) {
     renderNewsFeed(cached.items);
   } else {
-    elements.featuredNews.innerHTML = "";
     elements.newsList.innerHTML = '<p class="feed-message">ニュースを読み込み中...</p>';
-    elements.newsInsights.innerHTML = '<p class="feed-message">ニュースを整理中...</p>';
   }
 
   elements.newsTabs.querySelectorAll(".news-tab").forEach((button) => {
@@ -810,19 +786,14 @@ async function loadNewsCategory(categoryId) {
     renderNewsFeed(items);
   } catch (error) {
     if (!cached) {
-      elements.featuredNews.innerHTML = "";
       elements.newsList.innerHTML = '<p class="feed-message">ニュースを取得できません</p>';
-      elements.newsInsights.innerHTML = '<p class="feed-message">ニュースを整理できません</p>';
     }
     console.warn(error);
   }
 }
 
 function renderNewsFeed(items) {
-  const [featured, ...rest] = items;
-  elements.featuredNews.innerHTML = renderFeaturedNews(featured);
-  elements.newsList.innerHTML = rest.map(renderNewsItem).join("");
-  elements.newsInsights.innerHTML = renderNewsInsights(items);
+  elements.newsList.innerHTML = items.slice(0, 4).map(renderNewsItem).join("");
 }
 
 function renderFeaturedNews(item) {
@@ -1103,7 +1074,6 @@ setupSidebar();
 setupPages();
 updateClock();
 setupSearch();
-setupMiniMemo();
 setupShortcuts();
 setupShortcutImportExport();
 setupBackgroundSettings();
