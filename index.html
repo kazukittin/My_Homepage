@@ -4,39 +4,26 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>スタートページ</title>
-    <link rel="stylesheet" href="styles.css?v=20260618-news-height">
+    <link rel="stylesheet" href="styles.css?v=20260618-header-layout">
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="ページナビゲーション">
-        <div class="sidebar-head">
-          <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="サイドバーを折りたたむ" aria-expanded="true">
-            <span aria-hidden="true">☰</span>
-          </button>
-          <div class="sidebar-clock">
-            <time id="sidebarClock" datetime="">--:--:--</time>
-            <p id="sidebarDate">読み込み中...</p>
-          </div>
+      <header class="app-header">
+        <div class="header-clock">
+          <time id="headerClock" datetime="">--:--:--</time>
+          <p id="headerDate">読み込み中...</p>
         </div>
-
-        <nav class="page-nav" aria-label="ページ切り替え">
-          <button class="nav-link is-active" type="button" data-page-target="main" title="メイン画面">
-            <span class="nav-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-7h6v7"/></svg>
-            </span>
-            <span class="nav-label">メイン画面</span>
+        <nav class="header-actions" aria-label="ページ切り替え">
+          <button class="header-nav-button is-active" type="button" data-page-target="main">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-7h6v7"/></svg>
+            <span>ホーム</span>
+          </button>
+          <button class="header-nav-button" type="button" data-page-target="settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M4.9 15.1 3.5 18l2.5 2.5 2.9-1.4"/><path d="M15.1 19.1l2.9 1.4 2.5-2.5-1.4-2.9"/><path d="M19.1 8.9 20.5 6 18 3.5l-2.9 1.4"/><path d="M8.9 4.9 6 3.5 3.5 6l1.4 2.9"/></svg>
+            <span>設定</span>
           </button>
         </nav>
-
-        <div class="sidebar-footer">
-          <button class="settings-button" type="button" data-page-target="settings" title="設定">
-            <span class="nav-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M4.9 15.1 3.5 18l2.5 2.5 2.9-1.4"/><path d="M15.1 19.1l2.9 1.4 2.5-2.5-1.4-2.9"/><path d="M19.1 8.9 20.5 6 18 3.5l-2.9 1.4"/><path d="M8.9 4.9 6 3.5 3.5 6l1.4 2.9"/></svg>
-            </span>
-            <span class="nav-label">設定</span>
-          </button>
-        </div>
-      </aside>
+      </header>
 
       <main class="main-content">
         <section class="page is-active" id="page-main" aria-labelledby="mainTitle">

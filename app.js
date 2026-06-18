@@ -81,7 +81,6 @@ const WEATHER_CODES = {
   99: ["⛈️", "雷雨"],
 };
 
-const sidebarKey = "private-start.sidebarCollapsed";
 const pageKey = "private-start.activePage";
 const shortcutsKey = "private-start.shortcuts";
 const shortcutEditKey = "private-start.shortcutEditMode";
@@ -116,10 +115,8 @@ const BACKGROUND_PRESETS = {
 let shortcutGroups = loadShortcutGroups();
 
 const elements = {
-  appShell: document.querySelector(".app-shell"),
-  sidebarToggle: document.querySelector("#sidebarToggle"),
-  sidebarClock: document.querySelector("#sidebarClock"),
-  sidebarDate: document.querySelector("#sidebarDate"),
+  headerClock: document.querySelector("#headerClock"),
+  headerDate: document.querySelector("#headerDate"),
   navLinks: [...document.querySelectorAll("[data-page-target]")],
   pages: [...document.querySelectorAll(".page")],
   searchForm: document.querySelector("#searchForm"),
@@ -156,26 +153,6 @@ const elements = {
   shortcutImportFile: document.querySelector("#shortcutImportFile"),
   shortcutImportStatus: document.querySelector("#shortcutImportStatus"),
 };
-
-function setupSidebar() {
-  const isCollapsed = localStorage.getItem(sidebarKey) === "true";
-  setSidebarCollapsed(isCollapsed);
-
-  elements.sidebarToggle.addEventListener("click", () => {
-    const nextState = !elements.appShell.classList.contains("is-sidebar-collapsed");
-    setSidebarCollapsed(nextState);
-    localStorage.setItem(sidebarKey, String(nextState));
-  });
-}
-
-function setSidebarCollapsed(isCollapsed) {
-  elements.appShell.classList.toggle("is-sidebar-collapsed", isCollapsed);
-  elements.sidebarToggle.setAttribute("aria-expanded", String(!isCollapsed));
-  elements.sidebarToggle.setAttribute(
-    "aria-label",
-    isCollapsed ? "サイドバーを開く" : "サイドバーを折りたたむ"
-  );
-}
 
 function setupPages() {
   const savedPage = localStorage.getItem(pageKey);
@@ -219,9 +196,9 @@ function updateClock() {
     day: "numeric",
   }).format(now);
 
-  elements.sidebarClock.textContent = time;
-  elements.sidebarClock.dateTime = now.toISOString();
-  elements.sidebarDate.textContent = date;
+  elements.headerClock.textContent = time;
+  elements.headerClock.dateTime = now.toISOString();
+  elements.headerDate.textContent = date;
 }
 
 function setupSearch() {
@@ -1070,7 +1047,6 @@ function escapeAttribute(value) {
   return escapeHtml(value).replace(/`/g, "&#096;");
 }
 
-setupSidebar();
 setupPages();
 updateClock();
 setupSearch();
