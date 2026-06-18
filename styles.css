@@ -213,11 +213,21 @@ a {
 .weather-card {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(150px, auto) minmax(0, 1fr);
-  column-gap: 10px;
-  row-gap: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 18px;
+  row-gap: 10px;
   align-items: center;
   min-height: 70px;
+}
+
+.weather-card > .card-heading {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 20px;
+}
+
+.weather-card > .card-heading > div {
+  min-width: 92px;
 }
 
 .search-panel {
@@ -294,7 +304,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
   margin-top: 0;
 }
@@ -351,10 +361,10 @@ a {
 }
 
 .weekly-weather-list {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-top: 8px;
-  overflow-x: auto;
   padding-bottom: 2px;
 }
 
@@ -1148,6 +1158,18 @@ a {
 
   .header-nav-button {
     padding: 0 10px;
+  }
+
+  .weather-card {
+    grid-template-columns: 1fr;
+  }
+
+  .weather-main {
+    justify-content: flex-start;
+  }
+
+  .weekly-weather-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .page-heading {
