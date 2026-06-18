@@ -32,12 +32,6 @@
             </span>
             <span class="nav-label">ニュースフィード</span>
           </button>
-          <button class="nav-link" type="button" data-page-target="calendar" title="カレンダー">
-            <span class="nav-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 5h16v16H4z"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M4 10h16"/><path d="M8 14h3"/><path d="M13 14h3"/><path d="M8 17h3"/></svg>
-            </span>
-            <span class="nav-label">カレンダー</span>
-          </button>
         </nav>
 
         <div class="sidebar-footer">
@@ -132,83 +126,11 @@
             <p class="feed-message">ニュースを整理中...</p>
           </div>
         </section>
-
-        <section class="page" id="page-calendar" aria-labelledby="calendarTitle" hidden>
-          <div class="page-heading">
-            <h1 id="calendarTitle" class="sr-only">カレンダー</h1>
-            <a class="section-action" href="https://calendar.google.com/" target="_blank" rel="noopener">Googleカレンダーを開く</a>
-          </div>
-          <div class="calendar-card api-calendar-card">
-              <section class="month-calendar" aria-label="月間カレンダー">
-                <div class="month-calendar-header">
-                  <button id="prevMonth" type="button" aria-label="前の月">‹</button>
-                  <strong id="monthCalendarLabel">読み込み中...</strong>
-                  <button id="nextMonth" type="button" aria-label="次の月">›</button>
-                </div>
-                <div class="month-weekdays" aria-hidden="true">
-                  <span>日</span>
-                  <span>月</span>
-                  <span>火</span>
-                  <span>水</span>
-                  <span>木</span>
-                  <span>金</span>
-                  <span>土</span>
-                </div>
-                <div class="month-grid" id="monthGrid"></div>
-              </section>
-              <div class="calendar-side-panel">
-                <div class="selected-day-panel">
-                  <div class="side-heading">
-                    <p class="eyebrow">選択日</p>
-                    <h2 id="selectedDayLabel">日付を選択</h2>
-                  </div>
-                  <button class="section-action selected-day-add" id="addSelectedDayEvent" type="button">予定を追加</button>
-                  <div class="calendar-event-list compact" id="selectedDayEventList">
-                    <p class="feed-message">日付を選ぶと予定を表示します。</p>
-                  </div>
-                </div>
-                <div class="side-heading">
-                  <p class="eyebrow">予定</p>
-                  <h2>今週の予定</h2>
-                </div>
-                <div class="calendar-event-list" id="calendarEventList">
-                  <p class="feed-message">Googleカレンダーにログインすると予定を表示します。</p>
-                </div>
-                <div class="month-events-panel">
-                  <div class="side-heading">
-                    <p class="eyebrow">月内</p>
-                    <h2 id="monthEventListLabel">表示中の月の予定</h2>
-                  </div>
-                  <div class="calendar-event-list month-event-list" id="monthEventList">
-                    <p class="feed-message">予定はありません。</p>
-                  </div>
-                </div>
-              </div>
-          </div>
-        </section>
-
         <section class="page" id="page-settings" aria-labelledby="settingsTitle" hidden>
           <div class="page-heading">
             <h1 id="settingsTitle" class="sr-only">設定</h1>
           </div>
           <div class="settings-grid">
-            <section class="settings-card" aria-label="GoogleカレンダーAPI設定">
-              <p class="eyebrow">Google Calendar API</p>
-              <h2>カレンダー連携</h2>
-              <label for="calendarClientId">OAuth Client ID</label>
-              <input id="calendarClientId" type="text" autocomplete="off" placeholder="Google Cloud の Client ID">
-              <label for="calendarApiKey">API Key</label>
-              <input id="calendarApiKey" type="text" autocomplete="off" placeholder="Google Calendar API の API Key">
-              <label for="calendarBackendUrl">Backend URL</label>
-              <input id="calendarBackendUrl" type="url" autocomplete="off" placeholder="https://your-app.onrender.com">
-              <button class="settings-edit-toggle" id="calendarConfigEditToggle" type="button" aria-pressed="false">設定を編集</button>
-              <button class="calendar-auth-toggle" id="calendarAuthToggle" type="button">ログイン</button>
-              <p class="calendar-help" id="calendarStatus">Client ID と API Key を保存すると連携できます。</p>
-              <div class="origin-box">
-                <span>OAuth登録用オリジン</span>
-                <code id="calendarOrigin">読み込み中...</code>
-              </div>
-            </section>
             <section class="settings-card" aria-label="背景設定">
               <p class="eyebrow">表示</p>
               <h2>背景</h2>
@@ -225,7 +147,7 @@
                 <button id="saveBackgroundSettings" type="button">背景を保存</button>
                 <button id="resetBackgroundSettings" type="button">初期状態に戻す</button>
               </div>
-              <p class="calendar-help">画像URLを空にすると、プリセットの背景だけを使います。</p>
+              <p class="settings-help">画像URLを空にすると、プリセットの背景だけを使います。</p>
             </section>
             <section class="settings-card" aria-label="ショートカットのエクスポートとインポート">
               <p class="eyebrow">ショートカット</p>
@@ -235,7 +157,7 @@
                 <button id="importShortcuts" type="button">インポート</button>
               </div>
               <input class="sr-only" id="shortcutImportFile" type="file" accept="application/json,.json">
-              <p class="calendar-help" id="shortcutImportStatus">カテゴリとリンクをJSONで保存・復元できます。</p>
+              <p class="settings-help" id="shortcutImportStatus">カテゴリとリンクをJSONで保存・復元できます。</p>
             </section>
           </div>
         </section>
@@ -269,31 +191,6 @@
             <div class="category-manager" id="categoryManager" aria-label="カテゴリ管理"></div>
           </section>
         </div>
-      </div>
-    </dialog>
-
-    <dialog class="event-modal" id="eventModal" aria-labelledby="eventModalTitle">
-      <div class="modal-shell">
-        <div class="modal-heading">
-          <h2 id="eventModalTitle">予定を追加</h2>
-          <button class="modal-close" id="closeEventModal" type="button" aria-label="閉じる">×</button>
-        </div>
-        <form class="event-form" id="eventForm">
-          <input id="eventId" type="hidden">
-          <input id="eventBaseDate" type="hidden">
-          <div class="quick-shift-actions">
-            <button id="addDayShift" type="button">日勤 8:30-17:15</button>
-            <button id="addNightShift" type="button">宿直 8:30-翌8:30</button>
-          </div>
-          <input id="eventTitle" type="text" autocomplete="off" placeholder="予定名">
-          <input id="eventStart" type="datetime-local">
-          <input id="eventEnd" type="datetime-local">
-          <textarea id="eventDescription" placeholder="メモ"></textarea>
-          <div class="event-actions">
-            <button id="saveEvent" type="submit">予定を保存</button>
-            <button id="cancelEventEdit" type="button">編集解除</button>
-          </div>
-        </form>
       </div>
     </dialog>
 
