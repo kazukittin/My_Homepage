@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>スタートページ</title>
-    <link rel="stylesheet" href="styles.css?v=20260618-weather-balance">
+    <link rel="stylesheet" href="styles.css?v=20260723-search-upgrade">
   </head>
   <body>
     <div class="app-shell">
@@ -32,11 +32,25 @@
           <section class="main-grid" aria-label="メイン">
             <div class="primary-column">
               <form class="search-panel" id="searchForm" role="search">
-                <label class="sr-only" for="searchInput">Google検索</label>
+                <div class="search-intro">
+                  <div>
+                    <p class="eyebrow">クイック検索</p>
+                    <h2 id="greetingText">おかえりなさい</h2>
+                  </div>
+                  <span class="search-shortcut" aria-label="キーボードショートカット">Ctrl K</span>
+                </div>
+                <label class="sr-only" for="searchInput">ウェブ検索</label>
                 <div class="search-box">
-                  <input id="searchInput" name="q" type="search" autocomplete="off" placeholder="検索したい言葉を入力">
+                  <select id="searchProvider" aria-label="検索サービス">
+                    <option value="google">Google</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="wikipedia">Wikipedia</option>
+                    <option value="github">GitHub</option>
+                  </select>
+                  <input id="searchInput" name="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="何を探しますか？">
                   <button type="submit">検索</button>
                 </div>
+                <p class="search-help">「/」キーでも検索欄を開けます</p>
               </form>
 
               <article class="links-card" id="linksCard">
@@ -164,6 +178,6 @@
       </div>
     </dialog>
 
-    <script src="app.js?v=20260514-settings-toggle"></script>
+    <script src="app.js?v=20260723-search-upgrade"></script>
   </body>
 </html>

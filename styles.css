@@ -233,8 +233,33 @@ a {
 .search-panel {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 12px;
   box-shadow: none;
+}
+
+.search-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.search-intro h2 {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 28px);
+  line-height: 1.2;
+}
+
+.search-shortcut {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 11px;
+  font-weight: 750;
 }
 
 .search-panel label {
@@ -245,8 +270,28 @@ a {
 
 .search-box {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 96px;
+  grid-template-columns: 118px minmax(0, 1fr) 96px;
   gap: 8px;
+}
+
+.search-box select {
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: #111513;
+  cursor: pointer;
+}
+
+.search-box:focus-within {
+  filter: drop-shadow(0 0 14px rgba(142, 197, 163, 0.12));
+}
+
+.search-help {
+  margin: -4px 2px 0;
+  color: var(--faint);
+  font-size: 11px;
 }
 
 .search-box input,
@@ -1188,6 +1233,11 @@ a {
 
   .search-box {
     grid-template-columns: 1fr;
+  }
+
+  .search-shortcut,
+  .search-help {
+    display: none;
   }
 
 

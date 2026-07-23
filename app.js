@@ -1,7 +1,11 @@
 const CONFIG = {
   search: {
-    url: "https://www.google.com/search",
-    queryParam: "q",
+    providers: {
+      google: { url: "https://www.google.com/search", queryParam: "q" },
+      youtube: { url: "https://www.youtube.com/results", queryParam: "search_query" },
+      wikipedia: { url: "https://ja.wikipedia.org/w/index.php", queryParam: "search" },
+      github: { url: "https://github.com/search", queryParam: "q" },
+    },
   },
   weather: {
     place: "東京",
@@ -88,6 +92,7 @@ const newsCategoryKey = "private-start.newsCategory";
 const newsCachePrefix = "private-start.newsCache.";
 const newsCacheMaxAge = 15 * 60 * 1000;
 const backgroundSettingsKey = "private-start.backgroundSettings";
+const searchProviderKey = "private-start.searchProvider";
 
 const BACKGROUND_PRESETS = {
   forest: {
@@ -121,6 +126,8 @@ const elements = {
   pages: [...document.querySelectorAll(".page")],
   searchForm: document.querySelector("#searchForm"),
   searchInput: document.querySelector("#searchInput"),
+  searchProvider: document.querySelector("#searchProvider"),
+  greetingText: document.querySelector("#greetingText"),
   shortcutForm: document.querySelector("#shortcutForm"),
   categoryForm: document.querySelector("#categoryForm"),
   linksCard: document.querySelector("#linksCard"),
@@ -199,9 +206,26 @@ function updateClock() {
   elements.headerClock.textContent = time;
   elements.headerClock.dateTime = now.toISOString();
   elements.headerDate.textContent = date;
+  const hour = now.getHours();
+  elements.greetingText.textContent = hour < 5
+    ? "夜更かし、おつかれさまです"
+    : hour < 11
+      ? "おはようございます"
+      : hour < 18
+        ? "こんにちは"
+        : "おかえりなさい";
 }
 
 function setupSearch() {
+  const savedProvider = localStorage.getItem(searchProviderKey);
+  if (savedProvider && CONFIG.search.providers[savedProvider]) {
+    elements.searchProvider.value = savedProvider;
+  }
+
+  elements.searchProvider.addEventListener("change", () => {
+    localStorage.setItem(searchProviderKey, elements.searchProvider.value);
+  });
+
   elements.searchForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const query = elements.searchInput.value.trim();
@@ -211,9 +235,31 @@ function setupSearch() {
       return;
     }
 
-    const url = new URL(CONFIG.search.url);
-    url.searchParams.set(CONFIG.search.queryParam, query);
+    const provider = CONFIG.search.providers[elements.searchProvider.value] || CONFIG.search.providers.google;
+    const url = new URL(provider.url);
+    url.searchParams.set(provider.queryParam, query);
     window.open(url.toString(), "_blank", "noopener");
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const isTyping = target instanceof HTMLInputElement
+      || target instanceof HTMLTextAreaElement
+      || target instanceof HTMLSelectElement
+      || target?.isContentEditable;
+    const wantsSearch = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
+
+    if (wantsSearch || (event.key === "/" && !isTyping)) {
+      event.preventDefault();
+      showPage("main");
+      localStorage.setItem(pageKey, "main");
+      elements.searchInput.focus();
+      elements.searchInput.select();
+    }
+
+    if (event.key === "Escape" && document.activeElement === elements.searchInput) {
+      elements.searchInput.blur();
+    }
   });
 }
 
