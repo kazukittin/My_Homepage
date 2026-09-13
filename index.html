@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>スタートページ</title>
-    <link rel="stylesheet" href="styles.css?v=20260618-weather-balance">
+    <link rel="stylesheet" href="styles.css?v=20260913-weather-news">
   </head>
   <body>
     <div class="app-shell">
@@ -70,6 +70,12 @@
                 <span id="weatherFeels">体感 --°</span>
                 <span id="weatherWind">風 -- km/h</span>
               </div>
+              <section class="rain-panel" aria-label="降水予報">
+                <strong id="weatherRain">今日の降水確率 --%</strong>
+                <p>これから6時間の降水確率・降水量</p>
+                <div class="hourly-rain" id="hourlyRain"></div>
+              </section>
+              <div class="feed-toolbar"><small id="weatherStatus" role="status">更新中…</small><button id="refreshWeather" type="button">再読み込み</button></div>
               <div class="weekly-weather" id="weeklyWeather">
                 <a class="weather-link" href="https://weather.yahoo.co.jp/weather/" target="_blank" rel="noopener">Yahoo!天気</a>
                 <div class="weekly-weather-heading">明日から4日間</div>
@@ -88,6 +94,7 @@
                 <a class="mini-news-link" id="newsSourceLink" href="https://news.google.com/" target="_blank" rel="noopener">開く</a>
               </div>
               <div class="news-tabs" id="newsTabs" role="tablist" aria-label="ニュースカテゴリ"></div>
+              <div class="feed-toolbar"><small id="newsStatus" role="status">更新中…</small><button id="refreshNews" type="button">再読み込み</button></div>
               <div class="news-list" id="newsList">
                 <p class="feed-message">ニュースを読み込み中...</p>
               </div>
@@ -101,6 +108,17 @@
             <h1 id="settingsTitle" class="sr-only">設定</h1>
           </div>
           <div class="settings-grid">
+            <section class="settings-card" aria-labelledby="weatherSettingsTitle">
+              <p class="eyebrow">天気</p><h2 id="weatherSettingsTitle">表示する地域</h2>
+              <form id="weatherLocationForm">
+                <label for="weatherLocationQuery">市区町村名</label>
+                <input id="weatherLocationQuery" type="search" placeholder="例：横浜市、札幌市" minlength="2" required>
+                <div class="settings-actions"><button type="submit">地域を検索</button></div>
+              </form>
+              <p id="weatherLocationStatus" class="settings-help" role="status"></p>
+              <div id="weatherLocationResults" class="location-results"></div>
+              <p class="settings-help">見つからない場合は「市」まで入力するか、ローマ字で検索してください。選んだ地域はこのブラウザーに保存されます。降水確率には雪も含まれます。<a href="https://open-meteo.com/" target="_blank" rel="noopener">天気データ：Open-Meteo</a></p>
+            </section>
             <section class="settings-card" aria-label="背景設定">
               <p class="eyebrow">表示</p>
               <h2>背景</h2>
@@ -164,6 +182,6 @@
       </div>
     </dialog>
 
-    <script src="app.js?v=20260514-settings-toggle"></script>
+    <script src="app.js?v=20260913-weather-news"></script>
   </body>
 </html>

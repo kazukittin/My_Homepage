@@ -113,6 +113,28 @@ const BACKGROUND_PRESETS = {
 };
 
 let shortcutGroups = loadShortcutGroups();
+let newsRequestId = 0;
+let activeNewsCategory = CONFIG.news.categories[0].id;
+let weatherRequestId = 0;
+let locationRequestId = 0;
+let weatherLocation = readStored("private-start.weatherLocation") || CONFIG.weather;
+if (!validLocation(weatherLocation)) weatherLocation = CONFIG.weather;
+
+function readStored(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+}
+function writeStored(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; }
+}
+function validLocation(value) {
+  return value && typeof value.place === "string" && Number.isFinite(value.latitude) && Math.abs(value.latitude) <= 90 && Number.isFinite(value.longitude) && Math.abs(value.longitude) <= 180;
+}
+function updatedLabel(time) {
+  return new Date(time).toLocaleString("ja-JP", {month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+function numberLabel(value, suffix) {
+  return Number.isFinite(value) ? Math.round(value) + suffix : "--" + suffix;
+}
 
 const elements = {
   headerClock: document.querySelector("#headerClock"),
@@ -648,38 +670,94 @@ function toDateInputValue(date) {
 
 
 async function loadWeather() {
-  elements.weatherPlace.textContent = CONFIG.weather.place;
-
+  const requestId = ++weatherRequestId;
+  const location = {...weatherLocation};
+  const key = "private-start.weatherCache." + location.latitude + "," + location.longitude;
+  const cached = readStored(key);
+  const usableCache = cached?.data?.current && Date.now() - cached.savedAt < 6 * 60 * 60 * 1000 ? cached : null;
+  const status = document.querySelector("#weatherStatus");
+  elements.weatherPlace.textContent = location.place;
+  if (usableCache) renderWeatherData(usableCache.data);
+  else {
+    elements.weatherTemp.textContent = "--°";
+    elements.weatherSummary.textContent = "天気を取得中…";
+    elements.weatherIcon.textContent = "--";
+    document.querySelector("#weatherRain").textContent = "今日の降水確率 --%";
+    document.querySelector("#hourlyRain").innerHTML = "";
+    elements.weeklyWeatherList.innerHTML = "";
+  }
+  status.textContent = usableCache ? "前回取得 " + updatedLabel(usableCache.savedAt) + "・更新中" : "更新中…";
   const url = new URL("https://api.open-meteo.com/v1/forecast");
-  url.searchParams.set("latitude", CONFIG.weather.latitude);
-  url.searchParams.set("longitude", CONFIG.weather.longitude);
-  url.searchParams.set("timezone", CONFIG.weather.timezone);
-  url.searchParams.set("current", "temperature_2m,apparent_temperature,weather_code,wind_speed_10m");
-  url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min");
-  url.searchParams.set("forecast_days", "5");
-
+  url.search = new URLSearchParams({latitude:location.latitude,longitude:location.longitude,timezone:"auto",current:"temperature_2m,apparent_temperature,weather_code,wind_speed_10m",daily:"weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",hourly:"precipitation_probability,precipitation",forecast_days:"5"});
   try {
     const response = await fetchWithTimeout(url, 6000);
     const data = await response.json();
-    const current = data.current;
-    const code = Number(current.weather_code);
-    const weather = WEATHER_CODES[code] || ["🌡️", "天気情報"];
-
-    elements.weatherIcon.textContent = weather[0];
-    elements.weatherTemp.textContent = `${Math.round(current.temperature_2m)}°`;
-    elements.weatherSummary.textContent = weather[1];
-    elements.weatherFeels.textContent = `体感 ${Math.round(current.apparent_temperature)}°`;
-    elements.weatherWind.textContent = `風 ${Math.round(current.wind_speed_10m)} km/h`;
-    renderWeeklyWeather(data.daily);
-  } catch (error) {
-    elements.weatherIcon.textContent = "--";
-    elements.weatherTemp.textContent = "--°";
-    elements.weatherSummary.textContent = "天気を取得できません";
-    elements.weatherFeels.textContent = "体感 --°";
-    elements.weatherWind.textContent = "風 -- km/h";
-    elements.weeklyWeatherList.innerHTML = '<p class="feed-message">週間天気を取得できません</p>';
-    console.warn(error);
+    if (requestId !== weatherRequestId) return;
+    if (!data.current || !data.daily?.time?.length || !data.hourly?.time?.length) throw new Error("Incomplete weather");
+    renderWeatherData(data);
+    writeStored(key, {data, savedAt:Date.now()});
+    status.textContent = "取得 " + updatedLabel(Date.now()) + "・時刻は現地時間";
+  } catch {
+    if (requestId !== weatherRequestId) return;
+    status.textContent = usableCache ? "更新できませんでした・前回取得 " + updatedLabel(usableCache.savedAt) + " の予報を表示" : "取得できませんでした。再読み込みをお試しください。";
+    if (!usableCache) elements.weatherSummary.textContent = "天気を取得できません";
   }
+}
+
+function renderWeatherData(data) {
+  const current = data.current;
+  const weather = WEATHER_CODES[current.weather_code] || ["🌡️", "天気情報"];
+  elements.weatherIcon.textContent = weather[0];
+  elements.weatherTemp.textContent = numberLabel(current.temperature_2m,"°");
+  elements.weatherSummary.textContent = weather[1];
+  elements.weatherFeels.textContent = "体感 " + numberLabel(current.apparent_temperature,"°");
+  elements.weatherWind.textContent = "風 " + numberLabel(current.wind_speed_10m," km/h");
+  document.querySelector("#weatherRain").textContent = "今日の降水確率 " + numberLabel(data.daily.precipitation_probability_max?.[0],"%");
+  const currentHour = current.time.slice(0,13) + ":00";
+  document.querySelector("#hourlyRain").innerHTML = data.hourly.time.map((time,i)=>({time,i})).filter(({time})=>time>=currentHour).slice(0,6).map(({time,i})=>
+    '<div><span>'+escapeHtml(time.slice(11,16))+'</span><strong>'+numberLabel(data.hourly.precipitation_probability?.[i],'%')+'</strong><small>'+ (Number.isFinite(data.hourly.precipitation?.[i]) ? data.hourly.precipitation[i].toFixed(1) : '--')+' mm</small></div>'
+  ).join('');
+  renderWeeklyWeather(data.daily);
+}
+
+function setupWeatherSettings() {
+  const form = document.querySelector("#weatherLocationForm");
+  const results = document.querySelector("#weatherLocationResults");
+  const status = document.querySelector("#weatherLocationStatus");
+  status.textContent = "現在の地域：" + weatherLocation.place;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const name = document.querySelector("#weatherLocationQuery").value.trim();
+    if (name.length < 2) { status.textContent = "地域名を2文字以上で入力してください。"; return; }
+    const requestId = ++locationRequestId;
+    results.replaceChildren();
+    status.textContent = "地域を検索中…";
+    try {
+      const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
+      url.search = new URLSearchParams({name,count:"8",language:"ja",format:"json"});
+      const response = await fetchWithTimeout(url,6000);
+      const data = await response.json();
+      if (requestId !== locationRequestId) return;
+      const places = (data.results || []).map(item=>({place:[item.name,item.admin1,item.country].filter(Boolean).join("・"),latitude:item.latitude,longitude:item.longitude})).filter(validLocation);
+      status.textContent = places.length ? "表示する地域を選んでください。" : "見つかりませんでした。市区町村名やローマ字でお試しください。";
+      places.forEach(place=>{
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = place.place;
+        button.addEventListener("click",()=>{
+          if (!writeStored("private-start.weatherLocation",place)) {status.textContent="地域を保存できませんでした。ブラウザーの保存設定を確認してください。"; return;}
+          weatherLocation = place;
+          status.textContent = "保存しました：" + place.place;
+          results.replaceChildren();
+          loadWeather();
+        });
+        results.append(button);
+      });
+    } catch { if (requestId === locationRequestId) status.textContent = "検索できませんでした。通信を確認して再検索してください。"; }
+  });
+  document.querySelector("#refreshWeather").addEventListener("click",loadWeather);
+  document.querySelector("#refreshNews").addEventListener("click",()=>loadNewsCategory(activeNewsCategory));
+  window.addEventListener("online",()=>{loadWeather();loadNewsCategory(activeNewsCategory);});
 }
 
 function renderWeeklyWeather(daily) {
@@ -719,7 +797,7 @@ function renderNewsTabs() {
   elements.newsTabs.innerHTML = CONFIG.news.categories
     .map(
       (category) => `
-        <button class="news-tab" type="button" data-news-category="${escapeAttribute(category.id)}">
+        <button class="news-tab" role="tab" type="button" data-news-category="${escapeAttribute(category.id)}">
           ${escapeHtml(category.label)}
         </button>
       `
@@ -736,36 +814,35 @@ function renderNewsTabs() {
 }
 
 async function loadNewsCategory(categoryId) {
+  const requestId = ++newsRequestId;
   const category = CONFIG.news.categories.find((item) => item.id === categoryId) || CONFIG.news.categories[0];
-  localStorage.setItem(newsCategoryKey, category.id);
-  elements.newsSourceLink.href = "https://news.google.com/home?hl=ja&gl=JP&ceid=JP:ja";
+  activeNewsCategory = category.id;
+  try { localStorage.setItem(newsCategoryKey, category.id); } catch {}
+  const status = document.querySelector("#newsStatus");
   const cached = loadNewsCache(category.id);
-
-  if (cached) {
-    renderNewsFeed(cached.items);
-  } else {
-    elements.newsList.innerHTML = '<p class="feed-message">ニュースを読み込み中...</p>';
-  }
-
+  elements.newsSourceLink.href = "https://news.google.com/home?hl=ja&gl=JP&ceid=JP:ja";
+  if (cached) renderNewsFeed(cached.items);
+  else elements.newsList.innerHTML = '<p class="feed-message">ニュースを読み込み中...</p>';
+  status.textContent = cached ? "前回取得 " + updatedLabel(cached.savedAt) + "・更新中" : "更新中…";
   elements.newsTabs.querySelectorAll(".news-tab").forEach((button) => {
-    const isActive = button.dataset.newsCategory === category.id;
-    button.classList.toggle("is-active", isActive);
-    button.setAttribute("aria-selected", String(isActive));
+    const selected = button.dataset.newsCategory === category.id;
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-selected", String(selected));
   });
-
+  elements.newsList.setAttribute("aria-busy", "true");
   try {
     const items = await fetchNewsItems(category.feedUrl);
-    if (!items.length) {
-      throw new Error("News feed has no items");
-    }
-
-    saveNewsCache(category.id, items);
+    if (!items.length) throw new Error("News feed has no items");
+    if (requestId !== newsRequestId) return;
+    const saved = writeStored(newsCachePrefix + category.id, {items, savedAt: Date.now()});
     renderNewsFeed(items);
-  } catch (error) {
-    if (!cached) {
-      elements.newsList.innerHTML = '<p class="feed-message">ニュースを取得できません</p>';
-    }
-    console.warn(error);
+    status.textContent = "取得 " + updatedLabel(Date.now()) + (saved ? "" : "・端末への一時保存はできませんでした");
+  } catch {
+    if (requestId !== newsRequestId) return;
+    status.textContent = cached ? "更新できませんでした・前回取得 " + updatedLabel(cached.savedAt) + " の記事を表示" : "取得できませんでした。再読み込みをお試しください。";
+    if (!cached) elements.newsList.innerHTML = '<p class="feed-message">上の「開く」からGoogleニュースを確認できます。</p>';
+  } finally {
+    if (requestId === newsRequestId) elements.newsList.setAttribute("aria-busy", "false");
   }
 }
 
@@ -785,7 +862,9 @@ function renderFeaturedNews(item) {
 
 async function fetchNewsItems(feedUrl = CONFIG.news.feedUrl) {
   try {
-    return fetchJsonFeedItems(feedUrl);
+    const items = await fetchJsonFeedItems(feedUrl);
+    if (!items.length) throw new Error("Empty news feed");
+    return items;
   } catch (jsonError) {
     console.warn(jsonError);
     const xmlText = await fetchFeedText(feedUrl);
@@ -825,16 +904,8 @@ async function fetchFeedText(feedUrl) {
 }
 
 function loadNewsCache(categoryId) {
-  try {
-    const cached = JSON.parse(localStorage.getItem(`${newsCachePrefix}${categoryId}`));
-    if (cached?.items?.length && Date.now() - cached.savedAt < newsCacheMaxAge) {
-      return cached;
-    }
-  } catch {
-    localStorage.removeItem(`${newsCachePrefix}${categoryId}`);
-  }
-
-  return null;
+  const cached = readStored(newsCachePrefix + categoryId);
+  return Array.isArray(cached?.items) && cached.items.length && Number.isFinite(cached.savedAt) && Date.now() - cached.savedAt < 24 * 60 * 60 * 1000 ? cached : null;
 }
 
 function saveNewsCache(categoryId, items) {
@@ -978,7 +1049,9 @@ async function fetchWithTimeout(url, timeout) {
     if (!response.ok) {
       throw new Error(`Request failed: ${response.status}`);
     }
-    return response;
+    // Keep the timeout active until the response body has arrived as well.
+    const body = await response.text();
+    return { json: async () => JSON.parse(body), text: async () => body };
   } finally {
     window.clearTimeout(timeoutId);
   }
@@ -1053,6 +1126,7 @@ setupSearch();
 setupShortcuts();
 setupShortcutImportExport();
 setupBackgroundSettings();
+setupWeatherSettings();
 loadWeather();
 loadNews();
 
