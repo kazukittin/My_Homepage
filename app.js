@@ -22,6 +22,11 @@ const CONFIG = {
       { id: "sports", label: "スポーツ", feedUrl: "https://news.google.com/rss/headlines/section/topic/SPORTS?hl=ja&gl=JP&ceid=JP:ja" },
     ],
   },
+  threadWatch: {
+    corsProxy: "https://api.allorigins.win/raw?url=",
+    intervalMs: 5 * 60 * 1000,
+    fetchTimeoutMs: 25000,
+  },
   links: [
     {
       category: "毎日",
@@ -88,6 +93,7 @@ const newsCategoryKey = "private-start.newsCategory";
 const newsCachePrefix = "private-start.newsCache.";
 const newsCacheMaxAge = 15 * 60 * 1000;
 const backgroundSettingsKey = "private-start.backgroundSettings";
+const threadWatchKey = "private-start.threadWatch";
 
 const BACKGROUND_PRESETS = {
   forest: {
@@ -174,6 +180,16 @@ const elements = {
   importShortcuts: document.querySelector("#importShortcuts"),
   shortcutImportFile: document.querySelector("#shortcutImportFile"),
   shortcutImportStatus: document.querySelector("#shortcutImportStatus"),
+  threadWatchList: document.querySelector("#threadWatchList"),
+  threadWatchBadge: document.querySelector("#threadWatchBadge"),
+  threadWatchStatus: document.querySelector("#threadWatchStatus"),
+  refreshThreads: document.querySelector("#refreshThreads"),
+  threadWatchForm: document.querySelector("#threadWatchForm"),
+  threadWatchUrl: document.querySelector("#threadWatchUrl"),
+  threadWatchFormStatus: document.querySelector("#threadWatchFormStatus"),
+  threadWatchManager: document.querySelector("#threadWatchManager"),
+  threadNotifyPermission: document.querySelector("#threadNotifyPermission"),
+  threadNotifyStatus: document.querySelector("#threadNotifyStatus"),
 };
 
 function setupPages() {
@@ -1120,6 +1136,382 @@ function escapeAttribute(value) {
   return escapeHtml(value).replace(/`/g, "&#096;");
 }
 
+let threadWatchState = loadThreadWatchState();
+let threadWatchBaseTitle = document.title;
+let threadWatchChecking = false;
+
+function loadThreadWatchState() {
+  const stored = readStored(threadWatchKey);
+  if (stored && Array.isArray(stored.threads)) {
+    return { threads: stored.threads.filter(isValidThreadEntry) };
+  }
+  return { threads: [] };
+}
+
+function isValidThreadEntry(thread) {
+  return (
+    thread &&
+    typeof thread.url === "string" &&
+    typeof thread.code === "string" &&
+    thread.code.length > 0
+  );
+}
+
+function saveThreadWatchState() {
+  writeStored(threadWatchKey, threadWatchState);
+}
+
+function threadCodeFromUrl(value) {
+  try {
+    let text = String(value).trim();
+    if (text && !/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) {
+      text = `https://${text}`;
+    }
+    const url = new URL(text);
+    if (!/(^|\.)5chan\.jp$/.test(url.hostname)) {
+      return "";
+    }
+    const code = url.pathname.split("/").filter(Boolean)[0] || "";
+    return /^[A-Za-z0-9_-]+$/.test(code) ? code : "";
+  } catch {
+    return "";
+  }
+}
+
+function normalizeThreadUrl(value) {
+  const code = threadCodeFromUrl(value);
+  return code ? `https://e.5chan.jp/${code}` : "";
+}
+
+function classifyThreadPost(attachmentInfos, linkHrefs, threadCode) {
+  const kinds = [];
+  const infos = Array.isArray(attachmentInfos) ? attachmentInfos : [];
+  if (infos.some((info) => String(info).includes("画像"))) {
+    kinds.push("画像");
+  }
+  if (infos.some((info) => String(info).includes("動画"))) {
+    kinds.push("動画");
+  }
+  const selfPattern = new RegExp(`/${threadCode}/\\d+/?$`);
+  const hasExternalLink = (Array.isArray(linkHrefs) ? linkHrefs : []).some((href) => {
+    const value = String(href || "");
+    if (!/^https?:\/\//i.test(value)) {
+      return false;
+    }
+    return !selfPattern.test(value);
+  });
+  if (hasExternalLink) {
+    kinds.push("リンク");
+  }
+  return kinds;
+}
+
+function parseThreadPage(htmlText, threadCode) {
+  const documentXml = new DOMParser().parseFromString(htmlText, "text/html");
+  const title = (documentXml.title || "").split("|")[0].trim();
+  const posts = [...documentXml.querySelectorAll("article.resentry")]
+    .map((article) => {
+      const no = Number.parseInt(article.querySelector(".eno")?.textContent || "", 10);
+      if (!Number.isInteger(no)) {
+        return null;
+      }
+      const attachmentInfos = [...article.querySelectorAll(".filethumblist .info")].map(
+        (node) => node.textContent || ""
+      );
+      const linkHrefs = [...article.querySelectorAll(".comment a[href]")].map((node) =>
+        node.getAttribute("href")
+      );
+      return {
+        no,
+        kinds: classifyThreadPost(attachmentInfos, linkHrefs, threadCode),
+        at: article.querySelector("time.date")?.getAttribute("datetime") || "",
+      };
+    })
+    .filter(Boolean);
+  return { title, posts };
+}
+
+async function fetchThreadHtml(thread) {
+  const target = `${thread.url}/all`;
+  const proxyUrl = `${CONFIG.threadWatch.corsProxy}${encodeURIComponent(target)}`;
+  const response = await fetchWithTimeout(proxyUrl, CONFIG.threadWatch.fetchTimeoutMs);
+  const text = await response.text();
+  if (!text || !text.includes("resentry")) {
+    throw new Error("Thread page could not be read");
+  }
+  return text;
+}
+
+async function checkThread(thread) {
+  const htmlText = await fetchThreadHtml(thread);
+  const { title, posts } = parseThreadPage(htmlText, thread.code);
+  if (!posts.length) {
+    throw new Error("Thread page has no posts");
+  }
+  if (title) {
+    thread.title = title;
+  }
+  const maxNo = Math.max(...posts.map((post) => post.no));
+  thread.lastTotal = maxNo;
+  thread.lastChecked = Date.now();
+  thread.error = "";
+  if (!Number.isInteger(thread.lastSeen)) {
+    thread.lastSeen = maxNo;
+    return [];
+  }
+  const fresh = posts.filter(
+    (post) => post.no > thread.lastSeen && post.kinds.length > 0
+  );
+  thread.lastSeen = Math.max(thread.lastSeen, maxNo);
+  if (fresh.length) {
+    const known = new Set((thread.pending || []).map((item) => item.no));
+    thread.pending = [
+      ...(thread.pending || []),
+      ...fresh.filter((post) => !known.has(post.no)),
+    ].slice(-30);
+  }
+  return fresh;
+}
+
+async function checkAllThreads(manual = false) {
+  if (threadWatchChecking || !threadWatchState.threads.length) {
+    if (!threadWatchState.threads.length) {
+      renderThreadWatch();
+    }
+    return;
+  }
+  threadWatchChecking = true;
+  elements.threadWatchStatus.textContent = "確認中…";
+  const notified = [];
+  try {
+    for (const thread of threadWatchState.threads) {
+      try {
+        const fresh = await checkThread(thread);
+        if (fresh.length) {
+          notified.push({ thread, fresh });
+        }
+      } catch {
+        thread.error = "取得できませんでした";
+        thread.lastChecked = Date.now();
+      }
+    }
+  } finally {
+    threadWatchChecking = false;
+    saveThreadWatchState();
+    renderThreadWatch();
+    notified.forEach(({ thread, fresh }) => notifyThreadUpdate(thread, fresh));
+    if (manual) {
+      elements.threadWatchStatus.textContent =
+        "確認 " + updatedLabel(Date.now());
+    }
+  }
+}
+
+function notifyThreadUpdate(thread, fresh) {
+  if (!("Notification" in window) || Notification.permission !== "granted") {
+    return;
+  }
+  const kinds = [...new Set(fresh.flatMap((post) => post.kinds))].join("・");
+  try {
+    new Notification(`${thread.title || "スレ"} に新しい${kinds}`, {
+      body: `${fresh.length}件のレスに画像・動画・リンクが付きました`,
+      tag: `thread-watch-${thread.code}`,
+    });
+  } catch {
+  }
+}
+
+function renderThreadWatch() {
+  const threads = threadWatchState.threads;
+  const totalPending = threads.reduce(
+    (sum, thread) => sum + (thread.pending || []).length,
+    0
+  );
+  elements.threadWatchBadge.hidden = totalPending === 0;
+  elements.threadWatchBadge.textContent = String(totalPending);
+  document.title = totalPending
+    ? `(${totalPending}) ${threadWatchBaseTitle}`
+    : threadWatchBaseTitle;
+
+  if (!threads.length) {
+    elements.threadWatchStatus.textContent = "未登録";
+    elements.threadWatchList.innerHTML =
+      '<p class="feed-message">設定ページでスレのURLを登録してください</p>';
+    renderThreadManager();
+    return;
+  }
+
+  const lastChecked = Math.max(
+    ...threads.map((thread) => thread.lastChecked || 0)
+  );
+  elements.threadWatchStatus.textContent = lastChecked
+    ? "確認 " + updatedLabel(lastChecked)
+    : "未確認";
+
+  elements.threadWatchList.innerHTML = threads
+    .map((thread, threadIndex) => {
+      const pending = thread.pending || [];
+      const pendingItems = pending.length
+        ? `<ul class="thread-pending-list">${pending
+            .map(
+              (item) => `
+              <li>
+                <a href="${escapeAttribute(thread.url)}/${item.no}" target="_blank" rel="noopener">
+                  <span>No.${item.no} ${escapeHtml(item.kinds.join("・"))}</span>
+                  <span>${escapeHtml(item.at ? formatNewsDate(item.at) : "")}</span>
+                </a>
+              </li>`
+            )
+            .join("")}</ul>
+           <button class="thread-clear-button" type="button" data-clear-thread="${threadIndex}">既読にする</button>`
+        : '<p class="thread-none">新しい画像・動画・リンクはありません</p>';
+      const meta = thread.error
+        ? escapeHtml(thread.error)
+        : `全${thread.lastTotal ?? "--"}件`;
+      return `
+        <section class="thread-item">
+          <div class="thread-item-heading">
+            <a href="${escapeAttribute(thread.url)}" target="_blank" rel="noopener">${escapeHtml(thread.title || thread.url)}</a>
+            ${pending.length ? `<span class="thread-watch-badge">${pending.length}</span>` : ""}
+          </div>
+          <p class="thread-meta">${meta}</p>
+          ${pendingItems}
+        </section>
+      `;
+    })
+    .join("");
+  renderThreadManager();
+}
+
+function renderThreadManager() {
+  if (!elements.threadWatchManager) {
+    return;
+  }
+  elements.threadWatchManager.innerHTML = threadWatchState.threads
+    .map(
+      (thread, threadIndex) => `
+        <div class="thread-manager-row">
+          <span>${escapeHtml(thread.title || thread.url)}</span>
+          <button type="button" data-delete-thread="${threadIndex}">削除</button>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function setupThreadWatch() {
+  renderThreadWatch();
+  updateThreadNotifyStatus();
+
+  elements.threadWatchForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const url = normalizeThreadUrl(elements.threadWatchUrl.value);
+    if (!url) {
+      elements.threadWatchFormStatus.textContent =
+        "いつもちゃんねるのスレURLを入力してください。";
+      return;
+    }
+    if (threadWatchState.threads.some((thread) => thread.url === url)) {
+      elements.threadWatchFormStatus.textContent = "そのスレは登録済みです。";
+      return;
+    }
+    threadWatchState.threads.push({
+      url,
+      code: threadCodeFromUrl(url),
+      title: "",
+      lastSeen: null,
+      lastTotal: null,
+      lastChecked: 0,
+      pending: [],
+      error: "",
+    });
+    saveThreadWatchState();
+    elements.threadWatchForm.reset();
+    elements.threadWatchFormStatus.textContent =
+      "追加しました。今の最新レスまでを既読として監視を始めます。";
+    renderThreadWatch();
+    await checkAllThreads();
+  });
+
+  elements.threadWatchManager.addEventListener("click", (event) => {
+    const deleteButton = event.target.closest("[data-delete-thread]");
+    if (!deleteButton) {
+      return;
+    }
+    const threadIndex = Number(deleteButton.dataset.deleteThread);
+    if (!threadWatchState.threads[threadIndex]) {
+      return;
+    }
+    threadWatchState.threads.splice(threadIndex, 1);
+    saveThreadWatchState();
+    renderThreadWatch();
+  });
+
+  elements.threadWatchList.addEventListener("click", (event) => {
+    const clearButton = event.target.closest("[data-clear-thread]");
+    if (!clearButton) {
+      return;
+    }
+    const thread = threadWatchState.threads[Number(clearButton.dataset.clearThread)];
+    if (!thread) {
+      return;
+    }
+    thread.pending = [];
+    saveThreadWatchState();
+    renderThreadWatch();
+  });
+
+  elements.refreshThreads.addEventListener("click", () => checkAllThreads(true));
+
+  elements.threadNotifyPermission.addEventListener("click", async () => {
+    if (!("Notification" in window)) {
+      updateThreadNotifyStatus();
+      return;
+    }
+    try {
+      await Notification.requestPermission();
+    } catch {
+    }
+    updateThreadNotifyStatus();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") {
+      return;
+    }
+    const lastChecked = Math.max(
+      0,
+      ...threadWatchState.threads.map((thread) => thread.lastChecked || 0)
+    );
+    if (Date.now() - lastChecked >= CONFIG.threadWatch.intervalMs) {
+      checkAllThreads();
+    }
+  });
+
+  checkAllThreads();
+  window.setInterval(() => checkAllThreads(), CONFIG.threadWatch.intervalMs);
+}
+
+function updateThreadNotifyStatus() {
+  if (!elements.threadNotifyStatus) {
+    return;
+  }
+  const base =
+    "画像・動画・リンクが付いた新しいレスだけを通知します。このページを開いている間だけ、約5分おきに確認します。スレが終わって次スレに移ったら、URLを差し替えてください。";
+  if (!("Notification" in window)) {
+    elements.threadNotifyStatus.textContent =
+      base + " このブラウザーは通知に対応していないため、カードのバッジ表示のみになります。";
+    return;
+  }
+  const state =
+    Notification.permission === "granted"
+      ? "ブラウザ通知は許可されています。"
+      : Notification.permission === "denied"
+        ? "ブラウザ通知は拒否されています。カードのバッジ表示のみになります。"
+        : "ブラウザ通知は未許可です。許可すると、新着時に通知も届きます。";
+  elements.threadNotifyStatus.textContent = base + " " + state;
+}
+
 setupPages();
 updateClock();
 setupSearch();
@@ -1129,5 +1521,6 @@ setupBackgroundSettings();
 setupWeatherSettings();
 loadWeather();
 loadNews();
+setupThreadWatch();
 
 window.setInterval(updateClock, 1000);

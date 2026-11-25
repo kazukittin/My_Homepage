@@ -202,6 +202,7 @@ a {
 .search-panel,
 .weather-card,
 .mini-news-card,
+.thread-watch-card,
 .links-card {
   padding: 14px;
   border: 1px solid var(--line);
@@ -1215,3 +1216,119 @@ a {
 .weather-card { height:auto; }
 .mini-news-card { grid-template-rows:auto auto auto minmax(0,1fr); }
 @media(max-width:360px) { .hourly-rain { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+
+.thread-watch-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #c0453e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.thread-watch-list {
+  display: grid;
+  gap: 12px;
+}
+
+.thread-item-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.thread-item-heading a {
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.thread-item-heading a:hover,
+.thread-item-heading a:focus-visible {
+  text-decoration: underline;
+}
+
+.thread-meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.thread-none {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.thread-pending-list {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thread-pending-list a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 12px;
+}
+
+.thread-pending-list a:hover,
+.thread-pending-list a:focus-visible {
+  border-color: var(--accent);
+}
+
+.thread-clear-button {
+  margin-top: 8px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.thread-manager {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.thread-manager-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  gap: 6px;
+  align-items: center;
+}
+
+.thread-manager-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.thread-manager-row button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+}

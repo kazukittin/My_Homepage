@@ -1,0 +1,20 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+const src=fs.readFileSync(require('path').join(__dirname,'../app.js'),'utf8');
+function extract(name){const start=src.search(new RegExp('^function '+name+'\\(','m'));const text=src.slice(start);return text.slice(0,text.indexOf('\n}')+2)}
+const names=['threadCodeFromUrl','normalizeThreadUrl','classifyThreadPost'];
+const c=vm.createContext({URL,URLSearchParams,console});
+vm.runInContext(names.map(extract).join('\n'),c);
+const run=s=>vm.runInContext(s,c);
+assert.equal(run(`threadCodeFromUrl("https://e.5chan.jp/TqV6yycaGu")`),'TqV6yycaGu');
+assert.equal(run(`threadCodeFromUrl("https://e.5chan.jp/TqV6yycaGu?p=3")`),'TqV6yycaGu');
+assert.equal(run(`threadCodeFromUrl("https://e.5chan.jp/TqV6yycaGu/264")`),'TqV6yycaGu');
+assert.equal(run(`threadCodeFromUrl("https://example.com/TqV6yycaGu")`),'');
+assert.equal(run(`normalizeThreadUrl("e.5chan.jp/AbC123?p=2")`),'https://e.5chan.jp/AbC123');
+assert.equal(JSON.stringify(run(`classifyThreadPost(["jpg画像(244KB)"],[],"TqV6yycaGu")`)),JSON.stringify(['画像']));
+assert.equal(JSON.stringify(run(`classifyThreadPost(["mov動画(1024KB)"],[],"TqV6yycaGu")`)),JSON.stringify(['動画']));
+assert.equal(JSON.stringify(run(`classifyThreadPost([],["/TqV6yycaGu/264"],"TqV6yycaGu")`)),JSON.stringify([]));
+assert.equal(JSON.stringify(run(`classifyThreadPost([],["https://e.5chan.jp/TqV6yycaGu/264"],"TqV6yycaGu")`)),JSON.stringify([]));
+assert.equal(JSON.stringify(run(`classifyThreadPost([],["https://example.com/x"],"TqV6yycaGu")`)),JSON.stringify(['リンク']));
+assert.equal(JSON.stringify(run(`classifyThreadPost([],["http://5chan.jp/test/read.cgi/r18sirouto/1791831975/"],"TqV6yycaGu")`)),JSON.stringify(['リンク']));
+assert.equal(JSON.stringify(run(`classifyThreadPost(["png画像(10KB)"],["https://x.example/a"],"TqV6yycaGu")`)),JSON.stringify(['画像','リンク']));
+console.log('PASS: thread url + classify');

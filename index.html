@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>スタートページ</title>
-    <link rel="stylesheet" href="styles.css?v=20260913-weather-news">
+    <link rel="stylesheet" href="styles.css?v=20261125-thread-watch">
   </head>
   <body>
     <div class="app-shell">
@@ -99,6 +99,20 @@
                 <p class="feed-message">ニュースを読み込み中...</p>
               </div>
             </article>
+
+            <article class="thread-watch-card" id="threadWatchCard">
+              <div class="card-heading">
+                <div>
+                  <p class="eyebrow">いつもちゃんねる</p>
+                  <h2>スレ監視</h2>
+                </div>
+                <span class="thread-watch-badge" id="threadWatchBadge" hidden>0</span>
+              </div>
+              <div class="feed-toolbar"><small id="threadWatchStatus" role="status">未登録</small><button id="refreshThreads" type="button">再読み込み</button></div>
+              <div class="thread-watch-list" id="threadWatchList">
+                <p class="feed-message">設定ページでスレのURLを登録してください</p>
+              </div>
+            </article>
             </div>
           </section>
         </section>
@@ -147,6 +161,21 @@
               <input class="sr-only" id="shortcutImportFile" type="file" accept="application/json,.json">
               <p class="settings-help" id="shortcutImportStatus">カテゴリとリンクをJSONで保存・復元できます。</p>
             </section>
+            <section class="settings-card" aria-labelledby="threadWatchSettingsTitle">
+              <p class="eyebrow">いつもちゃんねる</p>
+              <h2 id="threadWatchSettingsTitle">スレ監視</h2>
+              <form id="threadWatchForm">
+                <label for="threadWatchUrl">監視するスレのURL</label>
+                <input id="threadWatchUrl" type="url" autocomplete="off" placeholder="https://e.5chan.jp/xxxxxxxxxx">
+                <div class="settings-actions"><button type="submit">スレを追加</button></div>
+              </form>
+              <p id="threadWatchFormStatus" class="settings-help" role="status"></p>
+              <div id="threadWatchManager" class="thread-manager"></div>
+              <div class="settings-actions">
+                <button id="threadNotifyPermission" type="button">ブラウザ通知を許可</button>
+              </div>
+              <p class="settings-help" id="threadNotifyStatus">画像・動画・リンクが付いた新しいレスだけを通知します。このページを開いている間だけ、約5分おきに確認します。スレが終わって次スレに移ったら、URLを差し替えてください。</p>
+            </section>
           </div>
         </section>
       </main>
@@ -182,6 +211,6 @@
       </div>
     </dialog>
 
-    <script src="app.js?v=20260913-weather-news"></script>
+    <script src="app.js?v=20261125-thread-watch"></script>
   </body>
 </html>
